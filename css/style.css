@@ -114,6 +114,13 @@ kbd {
   border: 1px solid var(--line); background: rgba(255,255,255,0.05);
 }
 
+.assist {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 184px);
+  width: 156px; height: 156px; border-radius: 50%;
+  background: var(--glass); border: 1px solid var(--line);
+}
+
 .maneuver {
   position: absolute; top: 50%; transform: translateY(-50%);
   right: calc(max(16px, env(safe-area-inset-right, 0px)) + 84px);
@@ -288,6 +295,7 @@ input[type="range"] { width: 100%; accent-color: var(--canopy); }
   .vread b { font-size: 30px; }
   .track { height: 90px; }
   .maneuver { right: calc(max(16px, env(safe-area-inset-right, 0px)) + 66px); }
+  .assist { width: 112px; height: 112px; left: calc(max(16px, env(safe-area-inset-left, 0px)) + 150px); }
   .maneuver .tool { font-size: 11px; padding: 6px 8px; }
   .bottombar { gap: 16px; padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
   .coach { top: calc(52px + env(safe-area-inset-top, 0px)); font-size: 13px; }

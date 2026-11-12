@@ -15,12 +15,32 @@ export const LESSONS = [
     ],
     setup: {
       world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.8, extraThermals: [{ x: 1100, w0: 3.4, r: 230, tb: -900, life: 6000, birds: true }] },
-      tStart: 2400, duration: 1200, airStart: 450, showThermals: true, glider: 'EN-B',
+      tStart: 2400, duration: 1200, airStart: 450, showThermals: true, glider: 'EN-B', centering: 'auto',
     },
     check(s, p) {
       const h = agl(s, p);
       if (h >= 1100) return { done: true };
       return { text: `${Math.round(h)} / 1100 m über Grund` };
+    },
+  },
+  {
+    id: 'verlagern',
+    title: 'Kreis verlagern',
+    goal: 'Steige in 9 Minuten auf 1050 m über Grund. Ohne den Kreis zu verlagern, reicht die Zeit nicht.',
+    intro: [
+      'Jetzt zentrierst du selbst. Kreist du neben dem Kern, steigt es auf einer Seite des Kreises mehr als auf der anderen, und das Vario piepst mal schneller, mal langsamer.',
+      'Der Thermik-Assistent zeigt deinen Kreis von oben, eingefärbt nach dem Steigen. Das Kreuz markiert den Kern.',
+      'Lass die Leertaste kurz los, wenn du auf das Kreuz zufliegst (dort piept es am stärksten). Dann fliegst du ein Stück geradeaus und der Kreis wandert Richtung Kern. Drück sie wieder, bevor du zu weit fliegst.',
+      'Mit ↓ kreist du enger, das passt zu schmalen, starken Kernen. Mit ↑ kreist du weiter, das spart Sinken in breiten, schwachen Bärten.',
+    ],
+    setup: {
+      world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.6, extraThermals: [{ x: 900, w0: 3.3, r: 210, tb: -900, life: 6000 }] },
+      tStart: 2400, duration: 540, airStart: 400, showThermals: true, glider: 'EN-B', centering: 'assist',
+    },
+    check(s, p) {
+      const h = agl(s, p);
+      if (h >= 1050) return { done: true };
+      return { text: `${Math.round(h)} / 1050 m über Grund` };
     },
   },
   {

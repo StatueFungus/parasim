@@ -380,10 +380,9 @@ export class Renderer {
   drawPilot(p, s, isFocus) {
     const w = s.world;
     if (p.state === 'flying') {
-      const off = p.circling ? Math.sin(p.phase) * 45 : 0;
       // Wende als halbe Kreisbewegung darstellen
       const phase = p.circling ? p.phase : p.turning ? Math.PI / 2 + (1 - p.turnLeft / TURN_TIME) * Math.PI * p.dir : null;
-      this.glider(this.sx(p.x + off), this.sy(p.z), p.color, phase, p.bar, isFocus ? null : p.name, isFocus,
+      this.glider(this.sx(p.x), this.sy(p.z), p.color, phase, p.bar, isFocus ? null : p.name, isFocus,
         { scale: this.laneScale(p.l), dir: p.dir });
     } else {
       const x = this.sx(p.x), y = this.sy(w.groundAt(p.x, p.l));
@@ -491,6 +490,81 @@ export class Renderer {
       if (p.best > 0) { ctx.fillRect(mx(p.best + p.launchX) - 0.5, H * 0.6, 1, H * 0.3); }
     }
   }
+}
+
+// Thermik-Assistent: Draufsicht auf den Kreis im mitfliegenden Bezugssystem (Wind herausgerechnet),
+// eingefärbt nach dem Steigen. Rechts ist Kursrichtung. Mit showCore wird der Kern markiert.
+export function drawAssist(cv, p, w, t, pts, showCore) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const S = cv.clientWidth;
+  if (cv.width !== Math.round(S * dpr)) { cv.width = cv.height = Math.round(S * dpr); }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, S, S);
+  const mid = S / 2, range = 120, k = (mid - 8) / range;
+  const cx0 = p.cx - p.drift, cy0 = p.cy;
+  const X = (ax) => mid + (ax - cx0) * k;
+  const Y = (ay) => mid - (ay - cy0) * k;
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2); ctx.clip();
+  // Sollkreis
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.arc(mid, mid, p.R * k, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  // Gemessenes Steigen entlang der Flugbahn
+  for (const q of pts) {
+    if (q.v > 0) {
+      ctx.fillStyle = `rgba(255,176,46,${Math.min(1, 0.3 + q.v / 3)})`;
+      ctx.beginPath(); ctx.arc(X(q.x), Y(q.y), 1.5 + Math.min(3, q.v), 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = 'rgba(92,182,255,0.55)';
+      ctx.beginPath(); ctx.arc(X(q.x), Y(q.y), 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Kern
+  if (showCore) {
+    const c = w.nearestCore(p.cx, p.z, t, Math.round(p.l), p.cy);
+    if (c && Math.hypot(c.dx, c.dy) < 3 * c.r) {
+      let kx = X(cx0 - c.dx), ky = Y(cy0 - c.dy);
+      const d = Math.hypot(kx - mid, ky - mid), lim = mid - 12;
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1.5;
+      if (d > lim) {
+        // ausserhalb: Pfeil am Rand in Richtung Kern
+        const ux = (kx - mid) / d, uy = (ky - mid) / d;
+        kx = mid + ux * lim; ky = mid + uy * lim;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.moveTo(kx + ux * 7, ky + uy * 7);
+        ctx.lineTo(kx - uy * 5, ky + ux * 5);
+        ctx.lineTo(kx + uy * 5, ky - ux * 5);
+        ctx.fill();
+      } else {
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath(); ctx.arc(kx, ky, c.r * 0.5 * k, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(kx - 6, ky); ctx.lineTo(kx + 6, ky); ctx.moveTo(kx, ky - 6); ctx.lineTo(kx, ky + 6); ctx.stroke();
+      }
+    }
+  }
+  // Schirm mit Flugrichtung
+  const gx = X(p.x - p.drift), gy = Y(p.y);
+  const hx = -Math.sin(p.phase), hy = -Math.cos(p.phase);
+  ctx.fillStyle = p.color;
+  ctx.beginPath();
+  ctx.moveTo(gx + hx * 8, gy + hy * 8);
+  ctx.lineTo(gx - hx * 5 - hy * 4, gy - hy * 5 + hx * 4);
+  ctx.lineTo(gx - hx * 5 + hy * 4, gy - hy * 5 - hx * 4);
+  ctx.fill();
+  ctx.restore();
+  // Beschriftung
+  ctx.font = '600 10px "Saira Semi Condensed", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(200,215,228,0.85)';
+  ctx.fillText(p.opening ? 'aufgemacht' : `Kreis ${Math.round(p.R)} m`, mid, S - 14);
+  ctx.fillText('Kurs →', mid, 16);
 }
 
 // Barogramm: Höhe über Strecke, Kreisen hervorgehoben, Gegner dünn dahinter.

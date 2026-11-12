@@ -19,6 +19,13 @@ export function sinkFor(g, v) {
 
 export const circleSink = (g) => g.sTrim + g.circleExtra + 0.1;
 
+// Kreisradien in Metern: eng (steil, mehr Sinken) bis weit (flach, fast Geradeaus-Sinken)
+export const R_MIN = 28, R_MAX = 65, R_DEFAULT = 40;
+
+export function circleSinkR(g, R) {
+  return Math.max(g.sTrim + 0.05, circleSink(g) + 0.35 * ((R_DEFAULT / R) ** 2 - 1));
+}
+
 export const glideRatio = (g, bar) => speedFor(g, bar) / 3.6 / sinkFor(g, speedFor(g, bar));
 
 // MacCready-Sollfahrt: Beschleunigerstellung, die Grundgeschwindigkeit / (Sinken netto + MC) maximiert.

@@ -221,8 +221,9 @@ export class World {
     return this.windMs * slope * 1.6 * (1 - Math.max(0, agl) / 400);
   }
 
-  // Vertikalbewegung der Luftmasse in m/s an der seitlichen Position l
-  lift(x, z, t, l = 0) {
+  // Vertikalbewegung der Luftmasse in m/s an der seitlichen Position l.
+  // y ist der seitliche Abstand zur Bartachse beim Kreisen (die Bärte stehen auf der Flugachse y = 0).
+  lift(x, z, t, l = 0, y = 0) {
     const base = this.baseMSL(t);
     let w = 0, inCore = 0;
     for (const th of this.thermals) {
@@ -230,7 +231,8 @@ export class World {
       if (lw <= 0.02) continue;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
-      const q = Math.abs(x - this.coreX(th, z, t)) / this.radius(th);
+      const dx = x - this.coreX(th, z, t);
+      const q = (y ? Math.hypot(dx, y) : Math.abs(dx)) / this.radius(th);
       if (q > 3.2) continue;
       const core = Math.exp(-q * q);
       const ring = 0.3 * Math.exp(-(((q - 1.8) / 0.6) ** 2));
@@ -244,7 +246,7 @@ export class World {
     return w - this.bgSink(x, t, l) * (1 - inCore) + this.ridge(x, z) * (1 - l);
   }
 
-  nearestCore(x, z, t, lane = 0) {
+  nearestCore(x, z, t, lane = 0, y = 0) {
     let best = null, bq = Infinity;
     for (const th of this.thermals) {
       if ((th.lane || 0) !== lane) continue;
@@ -252,8 +254,8 @@ export class World {
       if (s < 0.2) continue;
       const dx = x - this.coreX(th, z, t);
       const r = this.radius(th);
-      const q = Math.abs(dx) / r;
-      if (q < bq) { bq = q; best = { dx, r, s, th }; }
+      const q = Math.hypot(dx, y) / r;
+      if (q < bq) { bq = q; best = { dx, dy: y, r, s, th }; }
     }
     return best;
   }

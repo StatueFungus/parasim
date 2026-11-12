@@ -42,6 +42,7 @@ export class Session {
       this.add(new Pilot({
         id: 'bot' + i, name: b.name, tag: b.tag, color: b.color, glider,
         brain: new Brain({ mc: b.mc, skill: b.skill, launchAt }),
+        autoOffset: 0.55 - 0.45 * b.skill,
       })).tag = b.tag;
     }
   }

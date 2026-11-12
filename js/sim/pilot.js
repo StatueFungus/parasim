@@ -1,6 +1,7 @@
-import { GLIDERS, speedFor, sinkFor, circleSink, bestBar } from './gliders.js';
+import { GLIDERS, speedFor, sinkFor, circleSink, circleSinkR, bestBar, R_DEFAULT, R_MIN, R_MAX } from './gliders.js';
 
 export const TURN_TIME = 7;      // Flugsekunden für eine 180°-Wende
+export const OPEN_GRACE = 6;     // so lange darf man beim selbst Zentrieren «aufmachen», ohne den Kreis zu verlassen
 export const LANE_TIME = 55;     // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
 
@@ -25,6 +26,13 @@ export class Pilot {
     this.lane = 0;         // Ziel-Linie
     this.l = 0;            // tatsächliche seitliche Position 0..1
     this.vz = 0; this.vario = 0; this.air = 0; this.netto = 0; this.phase = 0;
+    // Kreisen: Mittelpunkt (cx, cy), Radius R; y ist der seitliche Abstand zur Bartachse.
+    // centering: 'auto' | 'assist' | 'pro'; autoOffset: bis auf welchen Bruchteil des Bartradius die Automatik zentriert.
+    this.centering = o.centering || 'auto';
+    this.autoOffset = o.autoOffset ?? 0.5;
+    this.radiusTarget = R_DEFAULT;
+    this.R = R_DEFAULT;
+    this.cx = 0; this.cy = 0; this.y = 0; this.openT = 0; this.drift = 0;
     this.best = 0;
     this.bestFlight = null;
     this.flights = [];
@@ -35,6 +43,13 @@ export class Pilot {
 
   get dist() { return Math.max(0, this.x - this.launchX); }
   get turning() { return this.turnLeft > 0; }
+  get manual() { return this.centering !== 'auto'; }
+  get opening() { return this.circling && !this.wantCircle; }
+
+  // ↑ weiter / ↓ enger kreisen (nur beim selbst Zentrieren)
+  adjustRadius(delta) {
+    this.radiusTarget = Math.max(R_MIN, Math.min(R_MAX, this.radiusTarget + delta));
+  }
 
   score() { return Math.max(this.best, this.state === 'flying' ? this.dist : 0); }
 
@@ -61,6 +76,7 @@ export class Pilot {
     this.dir = 1; this.turnLeft = 0;
     this.lane = 0; this.l = 0;
     this.vz = this.vario = 0;
+    this.y = 0;
     this.netto = world.lift(this.x, this.z, t);
     this.trail = [];
     this.flight = {
@@ -74,31 +90,41 @@ export class Pilot {
     if (this.state !== 'flying') return;
     const g = this.glider;
     const f = this.flight;
-    const air = world.lift(this.x, this.z, t, this.l);
+    const air = world.lift(this.x, this.z, t, this.l, this.circling ? this.y : 0);
     const wind = world.windAt(t, this.l, this.z - world.groundAt(this.x, this.l));
     this.air = air;
     this.netto += (air - this.netto) * Math.min(1, dt / 4);
+    this.drift += wind * dt;   // Versatz der Luftmasse, damit der Thermik-Assistent im mitfliegenden Bezugssystem zeichnen kann
 
-    if (this.wantCircle && !this.circling && !this.turning) {
-      this.circling = true;
-      f.circStart = { t, z: this.z };
-    } else if (!this.wantCircle && this.circling) {
-      this.circling = false;
-      this.endCircle(t);
-    }
+    // Beim selbst Zentrieren heisst kurz loslassen «Kreis aufmachen»: Erst wer länger als
+    // OPEN_GRACE geradeaus fliegt, verlässt den Kreis.
+    if (this.wantCircle && !this.circling && !this.turning) this.startCircle(t);
+    else if (this.circling && !this.wantCircle) {
+      this.openT += dt;
+      if (!this.manual || this.openT > OPEN_GRACE) { this.circling = false; this.endCircle(t); }
+    } else if (this.circling) this.openT = 0;
 
     let vz;
     if (this.circling) {
-      // Wer nahe genug am Kern kreist, wird automatisch hineinzentriert.
-      const c = world.nearestCore(this.x, this.z, t, Math.round(this.l));
-      if (c && Math.abs(c.dx) < 1.7 * c.r) {
-        const rate = 3.2 * g.center * (this.centerSkill ?? 1);
-        this.x -= Math.sign(c.dx) * Math.min(Math.abs(c.dx), rate * dt);
+      const vms = this.v / 3.6;
+      if (this.manual) this.R += (this.radiusTarget - this.R) * Math.min(1, dt / 4);
+      if (this.opening) {
+        // Geradeaus entlang der Kreistangente: Der ganze Kreis wandert mit.
+        this.x += -Math.sin(this.phase) * vms * dt + wind * dt;
+        this.y += Math.cos(this.phase) * vms * dt;
+        this.cx = this.x - this.R * Math.cos(this.phase);
+        this.cy = this.y - this.R * Math.sin(this.phase);
+        this.v += (g.vTrim - this.v) * Math.min(1, dt / 3);
+        vz = air - sinkFor(g, this.v);
+      } else {
+        this.phase += (vms / this.R) * dt;
+        this.cx += wind * dt;
+        if (!this.manual) this.autoCenter(world, t, dt);
+        this.x = this.cx + this.R * Math.cos(this.phase);
+        this.y = this.cy + this.R * Math.sin(this.phase);
+        this.v += (g.vTrim - 3 - this.v) * Math.min(1, dt / 3);
+        vz = air - circleSinkR(g, this.R);
       }
-      this.x += wind * dt;
-      this.v += (g.vTrim - 3 - this.v) * Math.min(1, dt / 3);
-      vz = air - circleSink(g);
-      this.phase += (dt * 2 * Math.PI) / 22;
       f.circT += dt;
     } else if (this.turning) {
       // In der Wende kommt man kaum voran und verliert etwas mehr Höhe.
@@ -135,9 +161,8 @@ export class Pilot {
       f.lastSample = t;
     }
     if (t - f.lastTrail >= 2) {
-      // Beim Kreisen die sichtbare Kreisbewegung mitschreiben: So zeigt die Spur die Windversetzung als Schleifen.
-      const loop = this.circling ? Math.sin(this.phase) * 45 : 0;
-      this.trail.push({ x: this.x + loop, z: this.z, v: this.vario, l: this.l });
+      // x ist beim Kreisen die echte Position auf dem Kreis: Die Spur zeigt die Windversetzung als Schleifen.
+      this.trail.push({ x: this.x, z: this.z, v: this.vario, l: this.l });
       if (this.trail.length > 1200) this.trail.shift();
       f.lastTrail = t;
     }
@@ -146,7 +171,32 @@ export class Pilot {
     if (this.z <= gz) { this.z = gz; this.land(t); }
   }
 
+  // Einkreisen aus dem Geradeausflug: Die aktuelle Position liegt auf dem Kreis, der Mittelpunkt seitlich daneben.
+  startCircle(t) {
+    this.circling = true;
+    this.openT = 0;
+    this.R = this.manual ? this.radiusTarget : R_DEFAULT;
+    this.y = 0;
+    this.cx = this.x;
+    this.cy = this.dir * this.R;
+    this.phase = -this.dir * Math.PI / 2;
+    this.flight.circStart = { t, z: this.z };
+  }
+
+  // Automatik: zieht den Kreismittelpunkt bis auf autoOffset · Bartradius an den Kern.
+  autoCenter(world, t, dt) {
+    const c = world.nearestCore(this.cx, this.z, t, Math.round(this.l), this.cy);
+    if (!c) return;
+    const d = Math.hypot(c.dx, c.dy);
+    const target = this.autoOffset * c.r;
+    if (d <= target || d > 1.7 * c.r + this.R) return;
+    const m = Math.min(d - target, 3.2 * this.glider.center * dt);
+    this.cx -= (c.dx / d) * m;
+    this.cy -= (c.dy / d) * m;
+  }
+
   endCircle(t) {
+    this.y = 0;
     const f = this.flight;
     if (!f.circStart) return;
     const dz = this.z - f.circStart.z, dtc = t - f.circStart.t;
@@ -233,11 +283,13 @@ export class Brain {
         p.wantCircle = false;
         this.noCircleUntil = t + 25;
         this.missed = null;
-        if (this.returning) { this.returning = false; p.turn(1); }
+        this.returning = false;
       }
       return;
     }
     if (p.turning) return;
+    // Nach dem Bart (oder wenn die Rückkehr abgebrochen ist) wieder auf Kurs gehen.
+    if (p.dir === -1 && !this.returning) { p.turn(1); return; }
 
     p.bar = bestBar(g, mc, p.netto * this.skill, world.windAt(t, p.l, agl) * p.dir);
     if (this.skill < 0.5) p.bar = Math.min(p.bar, 0.3);
@@ -264,7 +316,6 @@ export class Brain {
       // Den Bart nicht wiedergefunden: wieder auf Kurs.
       this.returning = false;
       this.missed = null;
-      p.turn(1);
     }
   }
 

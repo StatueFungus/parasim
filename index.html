@@ -39,11 +39,13 @@
     </div>
 
     <div class="speedbar" aria-label="Beschleuniger">
-      <span class="lbl">Beschl.</span>
+      <span class="lbl" id="barLbl">Beschl.</span>
       <div class="track" id="barTrack"><div id="barFill" class="fill"></div><div id="stf" class="stf" title="Sollfahrt"></div></div>
       <b id="hBar">0 %</b>
       <button id="bMc" class="mc" title="MacCready-Wert (M)">MC 1.0</button>
     </div>
+
+    <canvas id="assist" class="assist" aria-label="Thermik-Assistent" hidden></canvas>
 
     <div class="maneuver">
       <button id="bTurn" class="tool" title="Wenden (← zurück, → auf Kurs)">Wenden <kbd>←</kbd></button>
@@ -98,7 +100,7 @@
         </button>
         <button class="mode" data-mode="lessons">
           <span class="mname">Lernpfad</span>
-          <span class="mdesc" id="lessonDesc">Acht Lektionen von «Thermik zentrieren» bis zum Prüfungsflug.</span>
+          <span class="mdesc" id="lessonDesc">Neun Lektionen von «Thermik zentrieren» bis zum Prüfungsflug.</span>
         </button>
       </div>
       <details class="howto">
@@ -111,6 +113,8 @@
               <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Beschleuniger</dd>
               <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Wenden: zurück / wieder auf Kurs</dd>
               <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Gebirge: zur Hangkante / in die Talmitte</dd>
+              <dt>Kreisen: <kbd>Leertaste</kbd> kurz los</dt><dd>Selbst zentrieren: Kreis verlagern</dd>
+              <dt>Kreisen: <kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Selbst zentrieren: weiter / enger kreisen</dd>
               <dt><kbd>Enter</kbd></dt><dd>Starten / Neustart</dd>
               <dt><kbd>M</kbd></dt><dd>MacCready-Wert</dd>
               <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>S</kbd> <kbd>Z</kbd></dt><dd>Thermik, Tipps, Ton, Zoom</dd>
@@ -167,6 +171,13 @@
         <div class="seg" id="sQuality">
           <button data-v="0.8">Zäh</button><button data-v="1">Normal</button><button data-v="1.25">Kräftig</button>
         </div>
+      </div>
+      <div class="field">
+        <span class="flbl">Zentrieren</span>
+        <div class="seg" id="sCenter">
+          <button data-v="auto">Automatisch</button><button data-v="assist">Assistiert</button><button data-v="pro">Profi</button>
+        </div>
+        <p class="hint">Assistiert und Profi: Du zentrierst selbst. Kurz loslassen verlagert den Kreis, ↑/↓ machen ihn weiter oder enger. Gilt auch für die Tagesaufgabe.</p>
       </div>
       <div class="field">
         <span class="flbl">Gegner</span>

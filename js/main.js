@@ -1,9 +1,9 @@
 import { Session } from './sim/session.js';
 import { Pilot, LANE_NAMES } from './sim/pilot.js';
-import { GLIDERS, circleSink, bestBar } from './sim/gliders.js';
+import { GLIDERS, circleSink, bestBar, R_MIN, R_MAX } from './sim/gliders.js';
 import { DAY_START } from './sim/world.js';
 import { hash, mulberry32 } from './sim/rng.js';
-import { Renderer, drawBarogram } from './render.js';
+import { Renderer, drawBarogram, drawAssist } from './render.js';
 import { VarioSound } from './audio.js';
 import { LESSONS } from './lessons.js';
 import { load, save } from './store.js';
@@ -14,7 +14,7 @@ const sound = new VarioSound();
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
 const prefs = Object.assign(
-  { glider: 'EN-B', terrain: 'flat', clouds: 'cumulus', wind: 0, quality: 1, bots: 3, len: 12, sound: true, coach: true, thermals: false, mc: 1 },
+  { glider: 'EN-B', terrain: 'flat', clouds: 'cumulus', wind: 0, quality: 1, bots: 3, len: 12, sound: true, coach: true, thermals: false, mc: 1, centering: 'auto' },
   load('prefs', {}),
 );
 const savePrefs = () => save('prefs', prefs);
@@ -91,6 +91,7 @@ function dailyCfg() {
   };
 }
 
+const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
 const TERRAIN_NAMES = { flat: 'Flachland', mountain: 'Gebirge' };
 
@@ -101,7 +102,7 @@ function describe(cfg) {
 
 function pbKey(cfg) {
   const w = cfg.world;
-  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}`;
+  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}:${cfg.centering}`;
 }
 
 // ---------- Spielstart ----------
@@ -110,7 +111,10 @@ function startGame(cfg) {
     world: cfg.world, duration: cfg.duration ?? 7200, tStart: cfg.tStart ?? 0,
     rate: cfg.rate ?? (cfg.duration ?? 7200) / ((cfg.len ?? 12) * 60), penalty: cfg.penalty ?? 0,
   });
-  const player = session.add(new Pilot({ id: 'me', name: 'Du', color: '#ff5470', glider: cfg.glider, isPlayer: true, mc: prefs.mc }));
+  cfg.centering ??= prefs.centering;
+  const player = session.add(new Pilot({
+    id: 'me', name: 'Du', color: '#ff5470', glider: cfg.glider, isPlayer: true, mc: prefs.mc, centering: cfg.centering,
+  }));
   if (cfg.bots) session.addBots(cfg.bots, cfg.glider);
   if (cfg.airStart) {
     session.launch(player);
@@ -126,8 +130,9 @@ function startGame(cfg) {
     cfg, session, player, ghost,
     showThermals: cfg.showThermals ?? (cfg.mode === 'training' ? prefs.thermals : false),
     coachMsg: '', coachShown: 0, coachCheck: 0, circleHist: [], lastAvg: null,
-    checkT: 0, ended: false, follow: false, missed: null,
+    checkT: 0, ended: false, follow: false, missed: null, assistPts: [], wasCircling: false,
   };
+  $('assist').hidden = true;
   if (cfg.missedAt != null) game.missed = { x: cfg.missedAt, t: session.t, air: 3 };
   $('bLane').hidden = session.world.laneCount < 2;
   $('rowRidge').hidden = session.world.laneCount < 2;
@@ -261,12 +266,17 @@ view.addEventListener('pointerdown', (e) => {
   if (!game || paused) return;
   sound.init();
   if (e.clientX < innerWidth / 2) { touches.set(e.pointerId, { kind: 'circle' }); input.touchCircle = true; }
-  else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar });
+  else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar, r0: game.player.radiusTarget });
   view.setPointerCapture?.(e.pointerId);
 });
 view.addEventListener('pointermove', (e) => {
   const t = touches.get(e.pointerId);
-  if (t?.kind === 'bar' && game) game.player.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
+  if (t?.kind !== 'bar' || !game) return;
+  const p = game.player;
+  if (p.circling && p.manual) {
+    p.radiusTarget = t.r0;
+    p.adjustRadius((t.y0 - e.clientY) / 4);
+  } else p.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
 });
 function endTouch(e) {
   touches.delete(e.pointerId);
@@ -317,6 +327,10 @@ function coachTip(s, p) {
   }
   if (p.state !== 'flying') return null;
   const agl = p.z - w.groundAt(p.x, p.l), base = w.baseMSL(s.t);
+  if (p.circling && p.manual) {
+    const tip = centeringTip(s, p);
+    if (tip) return tip;
+  }
   if (p.circling) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
@@ -346,6 +360,27 @@ function coachTip(s, p) {
   return null;
 }
 
+// Tipps fürs selbst Zentrieren: Kreis aufmachen, Radius an den Bart anpassen.
+function centeringTip(s, p) {
+  const w = s.world;
+  if (p.opening) return p.openT > 2.5 ? 'Kreis aufgemacht. Leertaste wieder drücken, sonst verlässt du den Bart.' : null;
+  const pts = game.assistPts;
+  if (pts.length < 2 || pts[pts.length - 1].ph - pts[0].ph < 2 * Math.PI) return null;
+  // Schwankung des Steigens über den letzten vollen Kreis
+  const last = pts[pts.length - 1].ph;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = pts.length - 1; i >= 0 && last - pts[i].ph < 2 * Math.PI; i--) { lo = Math.min(lo, pts[i].v); hi = Math.max(hi, pts[i].v); }
+  const c = w.nearestCore(p.cx, p.z, s.t, Math.round(p.l), p.cy);
+  if (c && c.r < 170 && p.R > 46) return 'Schmaler Kern: enger kreisen (↓).';
+  if (c && c.s < 1.9 && c.r > 220 && p.R < 36) return 'Breiter, schwacher Bart: weiter kreisen (↑) spart Sinken.';
+  if (hi - lo > 0.7) {
+    return p.centering === 'assist'
+      ? 'Das Steigen schwankt im Kreis. Lass die Leertaste kurz los, wenn du aufs Kreuz zufliegst.'
+      : 'Das Steigen schwankt im Kreis. Lass die Leertaste kurz los, wenn es am stärksten piept.';
+  }
+  return null;
+}
+
 // Bei Wind steht der Bart schräg: Auf Flughöhe liegt er luvseitig der Wolke. Höchstens alle 4 Flugminuten erinnern.
 function leanTip(s, p) {
   const w = s.world;
@@ -369,7 +404,7 @@ function leanTip(s, p) {
 
 // ---------- Cockpit ----------
 const H = {};
-for (const id of ['hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
+for (const id of ['assist', 'barLbl', 'hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
 
 function updateHud(dt) {
   const { session: s, player: p, cfg } = game;
@@ -397,8 +432,13 @@ function updateHud(dt) {
   if (avg != null) game.lastAvg = avg;
   H.hAvg.textContent = avg != null ? (avg >= 0 ? '+' : '') + avg.toFixed(1) : game.lastAvg != null ? '(' + game.lastAvg.toFixed(1) + ')' : '–';
 
-  H.hBar.textContent = Math.round(p.bar * 100) + ' %';
-  H.barFill.style.height = p.bar * 100 + '%';
+  const radiusMode = flying && p.circling && p.manual;
+  H.barLbl.textContent = radiusMode ? 'Kreis' : 'Beschl.';
+  H.hBar.textContent = radiusMode ? Math.round(p.R) + ' m' : Math.round(p.bar * 100) + ' %';
+  H.barFill.style.height = (radiusMode ? (p.radiusTarget - R_MIN) / (R_MAX - R_MIN) : p.bar) * 100 + '%';
+  const showAssist = flying && p.circling && p.manual;
+  H.assist.hidden = !showAssist;
+  if (showAssist) drawAssist(H.assist, p, w, s.t, game.assistPts, p.centering === 'assist');
   const wind = w.windAt(s.t, p.l, aglNow);
   const stf = flying && !p.circling ? bestBar(g, p.mc, p.netto, wind * p.dir) : 0;
   H.stf.style.bottom = stf * 100 + '%';
@@ -493,8 +533,10 @@ function focusPilot() {
 function tickGame(dt) {
   const { session: s, player: p, cfg } = game;
   if (!paused && !game.ended) {
-    if (input.up) p.bar = Math.min(1, p.bar + dt * 0.9);
-    if (input.down) p.bar = Math.max(0, p.bar - dt * 0.9);
+    // Beim selbst Zentrieren steuern ↑/↓ im Kreis den Radius, sonst den Beschleuniger.
+    const radiusMode = p.circling && p.manual;
+    if (input.up) radiusMode ? p.adjustRadius(dt * 22) : (p.bar = Math.min(1, p.bar + dt * 0.9));
+    if (input.down) radiusMode ? p.adjustRadius(-dt * 22) : (p.bar = Math.max(0, p.bar - dt * 0.9));
     p.wantCircle = input.circle || input.touchCircle;
     if (p.state === 'flying') fast = false;
     s.update(dt * (fast ? 8 : 1));
@@ -503,6 +545,13 @@ function tickGame(dt) {
       game.circleHist.push({ t: s.t, z: p.z });
       while (game.circleHist.length > 2 && s.t - game.circleHist[0].t > 30) game.circleHist.shift();
     } else game.circleHist.length = 0;
+    // Spur für den Thermik-Assistenten im mitfliegenden Bezugssystem
+    if (p.circling && !game.wasCircling) game.assistPts.length = 0;
+    game.wasCircling = p.circling;
+    if (p.circling) {
+      game.assistPts.push({ x: p.x - p.drift, y: p.y, v: p.vz, ph: p.phase });
+      if (game.assistPts.length > 420) game.assistPts.shift();
+    }
     if (p.state === 'flying' && !p.circling && p.dir === 1 && p.air - circleSink(p.glider) > 0.4) {
       if (!game.missed || s.t - game.missed.t > 30 || p.air > game.missed.air) game.missed = { x: p.x, t: s.t, air: p.air };
     }
@@ -561,7 +610,7 @@ function finishGame() {
   if (cfg.mode === 'daily') {
     eyebrow = `Tagesaufgabe ${cfg.key.split('-').reverse().join('.')}`;
     const attempts = load('daily:' + cfg.key, []);
-    attempts.push({ at: Date.now(), d: Math.round(best), launch: bf ? clockOf(bf.launchT) : null });
+    attempts.push({ at: Date.now(), d: Math.round(best), launch: bf ? clockOf(bf.launchT) : null, c: cfg.centering });
     save('daily:' + cfg.key, attempts);
     const prev = load('ghost:' + cfg.key, null);
     if (bf && (!prev || best > prev.best)) {
@@ -569,8 +618,8 @@ function finishGame() {
       if (prev) sub += ' · Neuer Tagesrekord!';
     }
     const rows = [...attempts].sort((a, b) => b.d - a.d).slice(0, 5)
-      .map((a, i) => `<tr><td>${i + 1}.</td><td>${km(a.d)}</td><td>${a.launch ? 'Start ' + a.launch : 'nicht gestartet'}</td><td>${new Date(a.at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })}</td></tr>`).join('');
-    history = `<h3>Deine Versuche heute</h3><table><tr><th>#</th><th>Strecke</th><th>Start</th><th>Gespielt</th></tr>${rows}</table>`;
+      .map((a, i) => `<tr><td>${i + 1}.</td><td>${km(a.d)}</td><td>${a.launch ? 'Start ' + a.launch : 'nicht gestartet'}</td><td>${CENTERING_NAMES[a.c || 'auto']}</td><td>${new Date(a.at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })}</td></tr>`).join('');
+    history = `<h3>Deine Versuche heute</h3><table><tr><th>#</th><th>Strecke</th><th>Start</th><th>Zentrieren</th><th>Gespielt</th></tr>${rows}</table>`;
     againLabel = 'Nochmal versuchen';
     newLabel = null;
   } else if (cfg.lesson) {
@@ -610,6 +659,7 @@ function finishGame() {
     stats.push(stat('Höhengewinn', Math.round(bf.gain) + ' m'));
     stats.push(stat('Max. Höhe', Math.round(bf.maxZ) + ' m'));
     stats.push(stat('Wenden', bf.turns));
+    stats.push(stat('Zentrieren', CENTERING_NAMES[cfg.centering]));
     if (s.world.laneCount > 1) stats.push(stat('An der Kante', Math.round((100 * bf.laneT[0]) / Math.max(1, bf.laneT[0] + bf.laneT[1])) + ' %'));
     if (s.world.laneCount < 2) stats.push(stat('Flüge', p.flights.length));
   }
@@ -669,6 +719,7 @@ segInit('sTerrain', 'terrain');
 segInit('sClouds', 'clouds');
 segInit('sQuality', 'quality', Number);
 segInit('sLen', 'len', Number);
+segInit('sCenter', 'centering');
 $('gliderDesc').textContent = GLIDERS[prefs.glider].desc;
 $('sWind').value = prefs.wind;
 const windLabel = () => { $('windVal').textContent = windText(prefs.wind); };
@@ -732,7 +783,7 @@ $('briefGo').onclick = () => {
   startGame({
     mode: 'lesson', lesson: L, lessonIndex: briefIndex,
     world: { seed: hash('lesson', L.id), ...st.world },
-    glider: st.glider, bots: 0, len: (st.duration / 7200) * 12, duration: st.duration, tStart: st.tStart,
+    glider: st.glider, bots: 0, len: (st.duration / 7200) * 12, duration: st.duration, tStart: st.tStart, centering: st.centering,
     airStart: st.airStart, showThermals: st.showThermals, penalty: st.penalty ?? 0, missedAt: st.missedAt,
   });
 };
