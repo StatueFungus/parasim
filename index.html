@@ -1,0 +1,252 @@
+<meta charset="utf-8">
+<title>ParaSim Streckenflug</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Streckenflug-Simulator für Gleitschirmpiloten: Thermik finden, hochkreisen, weit gleiten.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+
+<div id="app">
+  <canvas id="view" aria-label="Flugansicht"></canvas>
+
+  <!-- ===== Cockpit ===== -->
+  <div id="hud" hidden>
+    <div class="topbar">
+      <div class="readout"><span class="lbl">Restzeit</span><b id="hRemain">2:00:00</b></div>
+      <div class="readout"><span class="lbl">Uhrzeit</span><b id="hClock">11:30</b></div>
+      <div class="readout main"><span class="lbl">Strecke</span><b id="hDist">0.0 km</b><span id="hRank" class="sub"></span></div>
+      <div class="readout hide-sm"><span class="lbl">Wind</span><b id="hWind">0</b></div>
+      <div class="readout hide-sm"><span class="lbl">Basis</span><b id="hBase">–</b></div>
+      <div class="tools">
+        <button id="bThermals" class="tool" title="Thermik anzeigen (T)" aria-pressed="false">Thermik</button>
+        <button id="bCoach" class="tool" title="Fluglehrer-Tipps (C)" aria-pressed="true">Tipps</button>
+        <button id="bSound" class="tool" title="Vario-Ton (S)" aria-pressed="true">Ton</button>
+        <button id="bZoom" class="tool" title="Zoom (Z)">Zoom</button>
+        <button id="bPause" class="tool" title="Pause (P)">II</button>
+      </div>
+    </div>
+
+    <div id="goal" class="goal" hidden></div>
+    <div id="coach" class="coach" aria-live="polite"></div>
+
+    <div class="vario" aria-label="Variometer">
+      <div class="vscale"><div id="vNeedle" class="vneedle"></div><span>+5</span><span>0</span><span>−5</span></div>
+      <div class="vread">
+        <b id="hVario">0.0</b><span class="unit">m/s</span>
+        <span class="lbl">Ø Kreis</span><b id="hAvg" class="small">–</b>
+      </div>
+    </div>
+
+    <div class="speedbar" aria-label="Beschleuniger">
+      <span class="lbl">Beschl.</span>
+      <div class="track" id="barTrack"><div id="barFill" class="fill"></div><div id="stf" class="stf" title="Sollfahrt"></div></div>
+      <b id="hBar">0 %</b>
+      <button id="bMc" class="mc" title="MacCready-Wert (M)">MC 1.0</button>
+    </div>
+
+    <div class="maneuver">
+      <button id="bTurn" class="tool" title="Wenden (← zurück, → auf Kurs)">Wenden <kbd>←</kbd></button>
+      <button id="bLane" class="tool" title="Linie wechseln (Q Hangkante, E Talmitte)" hidden>Ins Tal <kbd>E</kbd></button>
+    </div>
+
+    <div class="bottombar">
+      <div class="readout"><span class="lbl">Über Grund</span><b id="hAgl">0 m</b></div>
+      <div class="readout" id="rowRidge" hidden><span class="lbl">Linie</span><b id="hLane">Hangkante</b><span class="sub"><span id="hRidge">0 m</span> über Grat</span></div>
+      <div class="readout hide-sm"><span class="lbl">Höhe</span><b id="hMsl">0 m</b></div>
+      <div class="readout"><span class="lbl">Fahrt</span><b id="hSpeed">0 km/h</b></div>
+      <div class="readout"><span class="lbl">Grund</span><b id="hGs">0 km/h</b></div>
+      <div class="readout hide-sm"><span class="lbl">Gleitzahl</span><b id="hLd">–</b></div>
+    </div>
+    <canvas id="mini" aria-label="Übersicht"></canvas>
+
+    <div id="ground" class="groundpanel" hidden>
+      <div id="gTitle" class="gtitle">Startplatz</div>
+      <div id="gText" class="gtext"></div>
+      <div id="gMeter" class="meter"><span class="lbl">Thermikentwicklung</span><div class="mtrack"><div id="gMeterFill"></div></div></div>
+      <div class="gbtns">
+        <button id="gStart" class="btn primary">Starten <kbd>Enter</kbd></button>
+        <button id="gFast" class="btn">Zeitraffer <kbd>X</kbd></button>
+        <button id="gEnd" class="btn ghost">Runde beenden</button>
+      </div>
+    </div>
+    <div id="touchHint" class="touchhint" hidden><span>Links halten: kreisen</span><span>Rechts wischen: Beschleuniger</span></div>
+  </div>
+
+  <!-- ===== Hauptmenü ===== -->
+  <section id="menu" class="screen menu">
+    <div class="menu-inner">
+      <header class="brand">
+        <svg class="glyph" viewBox="0 0 64 40" aria-hidden="true"><path d="M4 22 Q32 -4 60 22 Q32 10 4 22Z"/><path d="M8 21 L32 36 L56 21" fill="none" stroke-width="1.4"/><circle cx="32" cy="36" r="3.2"/></svg>
+        <div>
+          <h1>ParaSim</h1>
+          <p class="tag">Streckenflug mit dem Gleitschirm. Thermik finden, hochkreisen, weit gleiten.</p>
+        </div>
+      </header>
+      <div class="modes">
+        <button class="mode" data-mode="training">
+          <span class="mname">Freies Training</span>
+          <span class="mdesc">Schirm, Gelände, Wind und Wetter frei wählen. Thermik einblenden, Tipps vom Fluglehrer, Neustart jederzeit.</span>
+        </button>
+        <button class="mode" data-mode="daily">
+          <span class="mname">Tagesaufgabe</span>
+          <span class="mdesc" id="dailyDesc">Jeden Tag ein neues Wetter, für alle gleich. Fliege gegen deinen eigenen Rekordflug.</span>
+        </button>
+        <button class="mode" data-mode="race">
+          <span class="mname">Wettkampf</span>
+          <span class="mdesc">Bis zu 7 Computerpiloten mit unterschiedlicher Taktik. Wer am weitesten fliegt, gewinnt.</span>
+        </button>
+        <button class="mode" data-mode="lessons">
+          <span class="mname">Lernpfad</span>
+          <span class="mdesc" id="lessonDesc">Sieben Lektionen von «Thermik zentrieren» bis zum Prüfungsflug.</span>
+        </button>
+      </div>
+      <details class="howto">
+        <summary>So fliegst du</summary>
+        <div class="howto-grid">
+          <div>
+            <h3>Steuerung</h3>
+            <dl class="keys">
+              <dt><kbd>Leertaste</kbd> halten</dt><dd>Kreisen</dd>
+              <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Beschleuniger</dd>
+              <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Wenden: zurück / wieder auf Kurs</dd>
+              <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Gebirge: zur Hangkante / in die Talmitte</dd>
+              <dt><kbd>Enter</kbd></dt><dd>Starten / Neustart</dd>
+              <dt><kbd>M</kbd></dt><dd>MacCready-Wert</dd>
+              <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>S</kbd> <kbd>Z</kbd></dt><dd>Thermik, Tipps, Ton, Zoom</dd>
+              <dt><kbd>P</kbd></dt><dd>Pause</dd>
+            </dl>
+            <p class="note">Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger.</p>
+          </div>
+          <div>
+            <h3>Taktik</h3>
+            <ul>
+              <li>Eine Runde dauert 2 Flugstunden ab 11:30 Uhr. Die Thermik ist erst nach etwa 30 Minuten voll entwickelt.</li>
+              <li>Kreise erst, wenn das Vario Steigen zeigt. Nahe am Kern wirst du automatisch zentriert.</li>
+              <li>Wachsende Wolken tragen, zerfallende kaum noch. Kreisende Vögel zeigen Thermik an.</li>
+              <li>Der weisse Pfeil am Beschleuniger zeigt die Sollfahrt für deinen MC-Wert.</li>
+              <li>Mehr Beschleuniger heisst schneller, aber auch mehr Sinken. Beim Kreisen wirkt er nicht.</li>
+              <li>Einen Bart verpasst? Wenden kostet Zeit und Höhe, kann aber die Landung verhindern.</li>
+              <li>Im Gebirge steht die beste Thermik an der sonnigen Hangkante. Die Talmitte ist sicherer, trägt aber schlechter. Ab Mittag schiebt dort der Talwind.</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ===== Einstellungen ===== -->
+  <section id="setup" class="screen sheet" hidden>
+    <div class="sheet-inner">
+      <h2 id="setupTitle">Freies Training</h2>
+      <div class="field">
+        <span class="flbl">Schirmklasse</span>
+        <div class="seg" id="sGlider"></div>
+        <p class="hint" id="gliderDesc"></p>
+      </div>
+      <div class="field">
+        <span class="flbl">Gelände</span>
+        <div class="seg" id="sTerrain">
+          <button data-v="flat">Flachland</button><button data-v="mountain">Gebirge</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flbl">Wolkenbild</span>
+        <div class="seg" id="sClouds">
+          <button data-v="cumulus">Cumulus</button><button data-v="streets">Wolkenstrassen</button><button data-v="blue">Blauthermik</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="flbl" for="sWind">Wind <b id="windVal">0 km/h</b></label>
+        <input type="range" id="sWind" min="-25" max="25" step="5" value="0">
+        <div class="rangelbl"><span>Gegenwind</span><span>Rückenwind</span></div>
+      </div>
+      <div class="field">
+        <span class="flbl">Thermikqualität</span>
+        <div class="seg" id="sQuality">
+          <button data-v="0.8">Zäh</button><button data-v="1">Normal</button><button data-v="1.25">Kräftig</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flbl">Gegner</span>
+        <div class="seg" id="sBots">
+          <button data-v="0">Keine</button><button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flbl">Rundendauer (Echtzeit)</span>
+        <div class="seg" id="sLen">
+          <button data-v="6">6 min</button><button data-v="12">12 min</button><button data-v="20">20 min</button>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button class="btn ghost" data-back>Zurück</button>
+        <button class="btn primary" id="setupGo">Zum Startplatz</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Lernpfad ===== -->
+  <section id="lessons" class="screen sheet" hidden>
+    <div class="sheet-inner">
+      <h2>Lernpfad</h2>
+      <ol id="lessonList" class="lessons"></ol>
+      <div class="sheet-actions"><button class="btn ghost" data-back>Zurück</button></div>
+    </div>
+  </section>
+
+  <section id="brief" class="screen sheet" hidden>
+    <div class="sheet-inner narrow">
+      <p class="eyebrow" id="briefNo"></p>
+      <h2 id="briefTitle"></h2>
+      <p class="goalline" id="briefGoal"></p>
+      <div id="briefText" class="prose"></div>
+      <div class="sheet-actions">
+        <button class="btn ghost" data-back>Zurück</button>
+        <button class="btn primary" id="briefGo">Los geht's</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Pause ===== -->
+  <section id="pause" class="screen sheet" hidden>
+    <div class="sheet-inner narrow center">
+      <h2>Pause</h2>
+      <div class="stack">
+        <button class="btn primary" id="pResume">Weiterfliegen</button>
+        <button class="btn" id="pRestart">Runde neu starten</button>
+        <button class="btn ghost" id="pMenu">Hauptmenü</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Auswertung ===== -->
+  <section id="results" class="screen sheet" hidden>
+    <div class="sheet-inner wide">
+      <p class="eyebrow" id="rEyebrow">Auswertung</p>
+      <h2 id="rTitle"></h2>
+      <p id="rSub" class="rsub"></p>
+      <div class="rgrid">
+        <div class="stats" id="rStats"></div>
+        <div class="board">
+          <h3>Rangliste</h3>
+          <ol id="rBoard"></ol>
+        </div>
+      </div>
+      <h3 class="baro-h">Barogramm deines besten Flugs <span class="legend"><i class="lg-c"></i>Kreisen <i class="lg-g"></i>Gleiten <i class="lg-o"></i>Gegner</span></h3>
+      <canvas id="baro" class="baro"></canvas>
+      <div id="rHistory" class="history"></div>
+      <div class="sheet-actions">
+        <button class="btn ghost" id="rMenu">Hauptmenü</button>
+        <button class="btn" id="rCopy">Ergebnis kopieren</button>
+        <button class="btn" id="rNew">Neues Wetter</button>
+        <button class="btn primary" id="rAgain">Nochmal fliegen</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="rotate" class="rotate" hidden><div>Bitte das Gerät quer halten.</div></div>
+  <div id="toast" class="toast" role="status"></div>
+</div>
+
+<script type="module" src="js/main.js"></script>
