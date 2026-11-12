@@ -110,6 +110,22 @@ export const LESSONS = [
     },
   },
   {
+    id: 'wind',
+    title: 'Bärte im Wind',
+    goal: 'Nutze 2 Thermiken mit je mindestens 200 m Höhengewinn bei 20 km/h Rückenwind.',
+    intro: [
+      'Die Thermik löst sich an einem festen Punkt am Boden ab. Auf dem Weg nach oben versetzt sie der Wind, der Bart steht also schräg.',
+      'Auf deiner Höhe liegt das Steigen deshalb luvseitig der Wolke. Bei Rückenwind triffst du es schon, bevor du unter der Wolke bist.',
+      'Beim Kreisen driftest du mit dem Wind. Achte auf die Schleifen in deiner Spur, und darauf, wie sich der Kern mit der Höhe verschiebt.',
+    ],
+    setup: { world: { terrain: 'flat', wind: 20, clouds: 'cumulus', quality: 1.1 }, tStart: 2700, duration: 1800, airStart: 700, showThermals: true, glider: 'EN-B' },
+    check(s, p) {
+      const n = (p.flight?.thermals ?? 0) + (p.circling && p.z - (p.flight?.circStart?.z ?? p.z) >= 200 ? 1 : 0);
+      if (n >= 2) return { done: true };
+      return { text: `${n} / 2 Thermiken genutzt` };
+    },
+  },
+  {
     id: 'pruefung',
     title: 'Prüfungsflug',
     goal: 'Fliege in einer vollen Runde 25 km.',

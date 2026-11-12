@@ -316,7 +316,7 @@ function coachTip(s, p) {
     return 'Die Thermik baut sich auf. Startest du früh, hast du mehr Zeit, aber schwächere Bärte.';
   }
   if (p.state !== 'flying') return null;
-  const agl = p.z - w.ground(p.x), base = w.baseMSL(s.t);
+  const agl = p.z - w.groundAt(p.x, p.l), base = w.baseMSL(s.t);
   if (p.circling) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
@@ -338,9 +338,32 @@ function coachTip(s, p) {
   if (two && p.lane === 1 && overRidge > 450 && df > 0.6) return 'Genug Höhe über dem Grat: An der sonnigen Hangkante (Q) steht die bessere Thermik.';
   if (p.air - circleSink(g) > 0.4 && p.z < base - 150) return 'Es steigt! Leertaste halten und einkreisen.';
   if (p.air > 0.3 && p.air - circleSink(g) <= 0.4) return 'Leichtes Steigen. Zum Kreisen reicht es noch nicht, weiter suchen.';
-  const stf = bestBar(g, p.mc, p.netto, w.windAt(s.t, p.l) * p.dir);
+  const lean = leanTip(s, p);
+  if (lean) return lean;
+  const stf = bestBar(g, p.mc, p.netto, w.windAt(s.t, p.l, agl) * p.dir);
   if (stf - p.bar > 0.3) return `Sollfahrt: mehr Beschleuniger, etwa ${Math.round(stf * 100)} %.`;
   if (p.bar - stf > 0.3) return `Sollfahrt: weniger Beschleuniger, etwa ${Math.round(stf * 100)} %.`;
+  return null;
+}
+
+// Bei Wind steht der Bart schräg: Auf Flughöhe liegt er luvseitig der Wolke. Höchstens alle 4 Flugminuten erinnern.
+function leanTip(s, p) {
+  const w = s.world;
+  if (Math.abs(w.windKmh) < 10 || s.t < (game.leanTipT ?? -Infinity) + 240) return null;
+  const lane = Math.round(p.l);
+  for (const th of w.thermals) {
+    if ((th.lane || 0) !== lane || w.strength(th, s.t) < 1) continue;
+    const c = w.cloud(th, s.t);
+    if (!c || c.alpha < 0.6 || c.decay > 0.3) continue;
+    const ahead = (c.x - p.x) * p.dir;
+    if (ahead < 400 || ahead > 2500) continue;
+    const off = c.x - w.coreX(th, p.z, s.t);
+    if (Math.abs(off) < 250) continue;
+    game.leanTipT = s.t;
+    const before = Math.sign(off) === p.dir;
+    return `Der Wind versetzt den Bart: Auf deiner Höhe steigt es etwa ${Math.round(Math.abs(off) / 50) * 50} m ` +
+      (before ? 'vor der Wolke, du triffst ihn also früher.' : 'hinter der Wolke, flieg unter ihr durch.');
+  }
   return null;
 }
 
@@ -360,7 +383,9 @@ function updateHud(dt) {
     const rank = s.standings().indexOf(p) + 1;
     H.hRank.textContent = `Platz ${rank} von ${s.pilots.length}` + (p.best > 0 && p.state === 'flying' ? ` · Bestweite ${km(p.best)}` : '');
   } else H.hRank.textContent = p.best > 0 && p.state === 'flying' ? `Bestweite ${km(p.best)}` : '';
-  H.hWind.textContent = windText(w.windKmh);
+  const aglNow = p.state === 'flying' ? p.z - w.groundAt(p.x, p.l) : 0;
+  const windHere = Math.round(w.windAt(s.t, p.l, aglNow) * 3.6);
+  H.hWind.textContent = windHere ? `${windHere > 0 ? '→' : '←'} ${Math.abs(windHere)} km/h` : 'still';
   H.hBase.textContent = Math.round(w.baseMSL(s.t)) + ' m';
 
   const flying = p.state === 'flying';
@@ -374,7 +399,7 @@ function updateHud(dt) {
 
   H.hBar.textContent = Math.round(p.bar * 100) + ' %';
   H.barFill.style.height = p.bar * 100 + '%';
-  const wind = w.windAt(s.t, p.l);
+  const wind = w.windAt(s.t, p.l, aglNow);
   const stf = flying && !p.circling ? bestBar(g, p.mc, p.netto, wind * p.dir) : 0;
   H.stf.style.bottom = stf * 100 + '%';
   H.stf.style.opacity = flying && !p.circling ? 1 : 0.25;

@@ -138,20 +138,32 @@ export class Renderer {
       if ((th.lane || 0) !== lane) continue;
       const st = w.strength(th, s.t);
       if (st < 0.15) continue;
-      const cx = this.sx(w.tx(th, s.t));
-      const hw = th.r * 1.6 * this.kx;
-      if (cx + hw < 0 || cx - hw > this.W) continue;
+      const base = w.baseMSL(s.t);
+      const hw = w.radius(th) * 1.6 * this.kx;
+      const xBot = this.sx(th.sx), xTop = this.sx(w.coreX(th, base, s.t));
+      if (Math.max(xBot, xTop) + hw < 0 || Math.min(xBot, xTop) - hw > this.W) continue;
       const a = Math.min(0.42, st / 8) * (w.laneCount > 1 && lane === 0 ? 0.75 : 1);
       const rgb = lane === 0 ? '255,140,40' : '255,200,60';
-      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      g.addColorStop(0, `rgba(${rgb},0)`);
-      g.addColorStop(0.5, `rgba(${rgb},${a})`);
-      g.addColorStop(1, `rgba(${rgb},0)`);
-      ctx.fillStyle = g;
+      // Schräger Schlauch: in waagrechten Scheiben zeichnen, jede um den Kern auf ihrer Höhe zentriert.
       const bottom = this.sy(th.gz);
-      ctx.fillRect(cx - hw, top, hw * 2, bottom - top);
+      const slices = Math.abs(xTop - xBot) < 4 ? 1 : 24;
+      const dz = (base - th.gz) / slices;
+      for (let i = 0; i < slices; i++) {
+        const z0 = th.gz + i * dz;
+        const cx = this.sx(w.coreX(th, z0 + dz / 2, s.t));
+        const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+        g.addColorStop(0, `rgba(${rgb},0)`);
+        g.addColorStop(0.5, `rgba(${rgb},${a})`);
+        g.addColorStop(1, `rgba(${rgb},0)`);
+        ctx.fillStyle = g;
+        const y1 = i === 0 ? bottom : this.sy(z0), y0 = this.sy(z0 + dz);
+        ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
+      }
+      // Auslösepunkt am Boden
+      ctx.fillStyle = `rgba(${rgb},0.8)`;
+      ctx.beginPath(); ctx.arc(xBot, bottom - 2, 2.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(120,50,0,0.75)';
-      ctx.fillText(st.toFixed(1), cx, top + 16 + lane * 13);
+      ctx.fillText(st.toFixed(1), xTop, top + 16 + lane * 13);
     }
   }
 
@@ -327,11 +339,11 @@ export class Renderer {
     ctx.lineWidth = 1.3;
     for (const th of w.thermals) {
       if (!th.birds || w.strength(th, s.t) < 1) continue;
-      const cx = w.tx(th, s.t);
-      if (this.sx(cx) < -50 || this.sx(cx) > this.W + 50) continue;
       const span = Math.max(100, base - th.gz - 250);
       for (let k = 0; k < 3; k++) {
         const z = th.gz + 120 + ((s.t * 1.2 + k * 260 + th.id * 37) % span);
+        const cx = w.coreX(th, z, s.t);
+        if (this.sx(cx) < -50 || this.sx(cx) > this.W + 50) continue;
         const ang = s.t * 0.25 + k * 2.1;
         const x = this.sx(cx + Math.cos(ang) * 90), y = this.sy(z) + Math.sin(ang) * 3;
         const f = 3 + Math.sin(s.t * 3 + k) * 1.2;

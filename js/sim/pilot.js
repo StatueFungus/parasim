@@ -75,7 +75,7 @@ export class Pilot {
     const g = this.glider;
     const f = this.flight;
     const air = world.lift(this.x, this.z, t, this.l);
-    const wind = world.windAt(t, this.l);
+    const wind = world.windAt(t, this.l, this.z - world.groundAt(this.x, this.l));
     this.air = air;
     this.netto += (air - this.netto) * Math.min(1, dt / 4);
 
@@ -90,7 +90,7 @@ export class Pilot {
     let vz;
     if (this.circling) {
       // Wer nahe genug am Kern kreist, wird automatisch hineinzentriert.
-      const c = world.nearestCore(this.x, t, Math.round(this.l));
+      const c = world.nearestCore(this.x, this.z, t, Math.round(this.l));
       if (c && Math.abs(c.dx) < 1.7 * c.r) {
         const rate = 3.2 * g.center * (this.centerSkill ?? 1);
         this.x -= Math.sign(c.dx) * Math.min(Math.abs(c.dx), rate * dt);
@@ -135,7 +135,9 @@ export class Pilot {
       f.lastSample = t;
     }
     if (t - f.lastTrail >= 2) {
-      this.trail.push({ x: this.x, z: this.z, v: this.vario, l: this.l });
+      // Beim Kreisen die sichtbare Kreisbewegung mitschreiben: So zeigt die Spur die Windversetzung als Schleifen.
+      const loop = this.circling ? Math.sin(this.phase) * 45 : 0;
+      this.trail.push({ x: this.x + loop, z: this.z, v: this.vario, l: this.l });
       if (this.trail.length > 1200) this.trail.shift();
       f.lastTrail = t;
     }
@@ -237,7 +239,7 @@ export class Brain {
     }
     if (p.turning) return;
 
-    p.bar = bestBar(g, mc, p.netto * this.skill, world.windAt(t, p.l) * p.dir);
+    p.bar = bestBar(g, mc, p.netto * this.skill, world.windAt(t, p.l, agl) * p.dir);
     if (this.skill < 0.5) p.bar = Math.min(p.bar, 0.3);
     if (this.returning) p.bar = 0;
     const need = cs + mc * 0.75 * this.skill + (agl < 350 ? -0.25 : 0.15);

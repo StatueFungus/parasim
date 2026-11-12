@@ -170,9 +170,30 @@ export class World {
     return 1;
   }
 
-  tx(th, t) { return th.sx + this.windMs * 0.85 * (t - th.tb); }
+  // Die Thermik löst sich an einem festen Punkt am Boden ab. Die aufsteigende Luft wird vom Wind
+  // versetzt, deshalb steht der Bart schräg: Versatz(h) = ∫ Wind(z) / Steigen dz.
+  // Mit dem Windprofil (z/1000)^0.2 ergibt das 833 · (h/1000)^1.2 · Wind / Steigen.
+  coreX(th, z, t) {
+    const h = Math.max(0, z - th.gz);
+    if (h <= 0) return th.sx;
+    const rise = Math.max(1.8, th.w0 * this.dayFactor(t));
+    let drift = this.windMs * 833.3 * Math.pow(h / 1000, 1.2);
+    if (th.lane) drift += this.valleyWind(t) * Math.min(h, 600);
+    return th.sx + drift / rise;
+  }
 
-  strength(th, t) { return th.w0 * this.env(th, t) * this.dayFactor(t); }
+  // 0..1: wie stark der Wind die Thermik zerreisst
+  torn() { return smoothstep(18, 35, Math.abs(this.windKmh)); }
+
+  strength(th, t) {
+    let s = th.w0 * this.env(th, t) * this.dayFactor(t);
+    const tf = this.torn();
+    // Zerrissene Bärte: schwächer und pulsierend
+    if (tf > 0) s *= 1 - 0.15 * tf - 0.45 * tf * (0.5 + 0.5 * Math.sin(t / 35 + th.id * 1.7));
+    return s;
+  }
+
+  radius(th) { return th.r * (1 - 0.3 * this.torn()); }
 
   // In der Talmitte sinkt die Luft als Ausgleich zur Hangthermik etwas stärker.
   bgSink(x, t, l = 0) {
@@ -186,7 +207,11 @@ export class World {
     return this.laneCount > 1 ? 2.6 * smoothstep(1800, 4200, t) : 0;
   }
 
-  windAt(t, l = 0) { return this.windMs + l * this.valleyWind(t); }
+  // Wind auf Höhe agl über Grund: nimmt mit der Höhe zu; Talwind weht nur unterhalb der Grate.
+  windAt(t, l = 0, agl = 1000) {
+    const prof = clamp(Math.pow(Math.max(agl, 30) / 1000, 0.2), 0.45, 1.25);
+    return this.windMs * prof + l * this.valleyWind(t) * (1 - smoothstep(400, 900, agl));
+  }
 
   ridge(x, z) {
     if (this.terrain !== 'mountain' || !this.windMs) return 0;
@@ -205,7 +230,7 @@ export class World {
       if (lw <= 0.02) continue;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
-      const q = Math.abs(x - this.tx(th, t)) / th.r;
+      const q = Math.abs(x - this.coreX(th, z, t)) / this.radius(th);
       if (q > 3.2) continue;
       const core = Math.exp(-q * q);
       const ring = 0.3 * Math.exp(-(((q - 1.8) / 0.6) ** 2));
@@ -219,15 +244,16 @@ export class World {
     return w - this.bgSink(x, t, l) * (1 - inCore) + this.ridge(x, z) * (1 - l);
   }
 
-  nearestCore(x, t, lane = 0) {
+  nearestCore(x, z, t, lane = 0) {
     let best = null, bq = Infinity;
     for (const th of this.thermals) {
       if ((th.lane || 0) !== lane) continue;
       const s = this.strength(th, t);
       if (s < 0.2) continue;
-      const dx = x - this.tx(th, t);
-      const q = Math.abs(dx) / th.r;
-      if (q < bq) { bq = q; best = { dx, r: th.r, s, th }; }
+      const dx = x - this.coreX(th, z, t);
+      const r = this.radius(th);
+      const q = Math.abs(dx) / r;
+      if (q < bq) { bq = q; best = { dx, r, s, th }; }
     }
     return best;
   }
@@ -242,7 +268,7 @@ export class World {
     const size = a < 0.5 ? smoothstep(0.15, 0.5, a) : a < 0.85 ? 1 : 1 - 0.6 * smoothstep(0.85, 1.3, a);
     const alpha = a < 0.9 ? Math.min(1, (a - 0.15) / 0.08) : 1 - smoothstep(0.9, 1.3, a);
     return {
-      x: this.tx(th, t),
+      x: this.coreX(th, this.baseMSL(t), t),
       lane: th.lane || 0,
       size: size * Math.sqrt(th.w0 / 2.2) * (0.5 + 0.5 * df),
       alpha,
