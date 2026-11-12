@@ -29,9 +29,8 @@ export const LESSONS = [
     goal: 'Steige in 9 Minuten auf 1050 m über Grund. Ohne den Kreis zu verlagern, reicht die Zeit nicht.',
     intro: [
       'Jetzt zentrierst du selbst. Kreist du neben dem Kern, steigt es auf einer Seite des Kreises mehr als auf der anderen, und das Vario piepst mal schneller, mal langsamer.',
-      'Der Thermik-Assistent zeigt deinen Kreis von oben, eingefärbt nach dem Steigen. Das Kreuz markiert den Kern.',
-      'Lass die Leertaste kurz los, wenn du auf das Kreuz zufliegst (dort piept es am stärksten). Dann fliegst du ein Stück geradeaus und der Kreis wandert Richtung Kern. Drück sie wieder, bevor du zu weit fliegst.',
-      'Mit ↓ kreist du enger, das passt zu schmalen, starken Kernen. Mit ↑ kreist du weiter, das spart Sinken in breiten, schwachen Bärten.',
+      'Solange du kreist, läuft die Zeit langsamer. Der Thermik-Assistent zeigt deinen Kreis von oben, das Kreuz markiert den Kern.',
+      'Drück ↑ (am Handy rechts tippen), wenn der Assistent grün leuchtet. Dann fliegst du kurz geradeaus Richtung Kern und kreist danach automatisch weiter. Meist reichen zwei oder drei Mal.',
     ],
     setup: {
       world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.6, extraThermals: [{ x: 900, w0: 3.3, r: 210, tb: -900, life: 6000 }] },

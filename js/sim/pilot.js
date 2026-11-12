@@ -1,7 +1,7 @@
-import { GLIDERS, speedFor, sinkFor, circleSink, circleSinkR, bestBar, R_DEFAULT, R_MIN, R_MAX } from './gliders.js';
+import { GLIDERS, speedFor, sinkFor, circleSink, circleSinkR, bestBar, R_DEFAULT } from './gliders.js';
 
 export const TURN_TIME = 7;      // Flugsekunden für eine 180°-Wende
-export const OPEN_GRACE = 6;     // so lange darf man beim selbst Zentrieren «aufmachen», ohne den Kreis zu verlassen
+export const SHIFT_TIME = 4.5;   // Flugsekunden geradeaus beim Verlagern (≈ 45 m)
 export const LANE_TIME = 55;     // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
 
@@ -30,9 +30,8 @@ export class Pilot {
     // centering: 'auto' | 'assist' | 'pro'; autoOffset: bis auf welchen Bruchteil des Bartradius die Automatik zentriert.
     this.centering = o.centering || 'auto';
     this.autoOffset = o.autoOffset ?? 0.5;
-    this.radiusTarget = R_DEFAULT;
     this.R = R_DEFAULT;
-    this.cx = 0; this.cy = 0; this.y = 0; this.openT = 0; this.drift = 0;
+    this.cx = 0; this.cy = 0; this.y = 0; this.shiftLeft = 0; this.drift = 0;
     this.best = 0;
     this.bestFlight = null;
     this.flights = [];
@@ -44,11 +43,14 @@ export class Pilot {
   get dist() { return Math.max(0, this.x - this.launchX); }
   get turning() { return this.turnLeft > 0; }
   get manual() { return this.centering !== 'auto'; }
-  get opening() { return this.circling && !this.wantCircle; }
+  get opening() { return this.circling && this.shiftLeft > 0; }
 
-  // ↑ weiter / ↓ enger kreisen (nur beim selbst Zentrieren)
-  adjustRadius(delta) {
-    this.radiusTarget = Math.max(R_MIN, Math.min(R_MAX, this.radiusTarget + delta));
+  // Kreis verlagern: ein festes Stück geradeaus in der aktuellen Flugrichtung, danach wird weitergekreist.
+  shift() {
+    if (!this.circling || !this.manual || this.shiftLeft > 0) return false;
+    this.shiftLeft = SHIFT_TIME;
+    this.flight.shifts++;
+    return true;
   }
 
   score() { return Math.max(this.best, this.state === 'flying' ? this.dist : 0); }
@@ -81,7 +83,7 @@ export class Pilot {
     this.trail = [];
     this.flight = {
       launchT: t, track: [{ t, x: this.x, z: this.z, c: 0, l: 0 }],
-      circT: 0, glideT: 0, gain: 0, thermals: 0, maxZ: this.z, best30: 0, turns: 0, laneT: [0, 0],
+      circT: 0, glideT: 0, gain: 0, thermals: 0, maxZ: this.z, best30: 0, turns: 0, shifts: 0, laneT: [0, 0],
       circStart: null, lastSample: t, lastTrail: t, dist: 0,
     };
   }
@@ -96,19 +98,14 @@ export class Pilot {
     this.netto += (air - this.netto) * Math.min(1, dt / 4);
     this.drift += wind * dt;   // Versatz der Luftmasse, damit der Thermik-Assistent im mitfliegenden Bezugssystem zeichnen kann
 
-    // Beim selbst Zentrieren heisst kurz loslassen «Kreis aufmachen»: Erst wer länger als
-    // OPEN_GRACE geradeaus fliegt, verlässt den Kreis.
-    if (this.wantCircle && !this.circling && !this.turning) this.startCircle(t);
-    else if (this.circling && !this.wantCircle) {
-      this.openT += dt;
-      if (!this.manual || this.openT > OPEN_GRACE) { this.circling = false; this.endCircle(t); }
-    } else if (this.circling) this.openT = 0;
+    if (this.wantCircle && !this.circling && !this.turning) this.startCircle(world, t);
+    else if (this.circling && !this.wantCircle) { this.circling = false; this.endCircle(t); }
 
     let vz;
     if (this.circling) {
       const vms = this.v / 3.6;
-      if (this.manual) this.R += (this.radiusTarget - this.R) * Math.min(1, dt / 4);
       if (this.opening) {
+        this.shiftLeft = Math.max(0, this.shiftLeft - dt);
         // Geradeaus entlang der Kreistangente: Der ganze Kreis wandert mit.
         this.x += -Math.sin(this.phase) * vms * dt + wind * dt;
         this.y += Math.cos(this.phase) * vms * dt;
@@ -172,10 +169,12 @@ export class Pilot {
   }
 
   // Einkreisen aus dem Geradeausflug: Die aktuelle Position liegt auf dem Kreis, der Mittelpunkt seitlich daneben.
-  startCircle(t) {
+  // Beim selbst Zentrieren passt sich der Radius der Bartbreite an: schmale Kerne eng, breite Bärte weit.
+  startCircle(world, t) {
     this.circling = true;
-    this.openT = 0;
-    this.R = this.manual ? this.radiusTarget : R_DEFAULT;
+    this.shiftLeft = 0;
+    const c = this.manual ? world.nearestCore(this.x, this.z, t, Math.round(this.l)) : null;
+    this.R = c ? Math.max(30, Math.min(50, c.r * 0.2)) : R_DEFAULT;
     this.y = 0;
     this.cx = this.x;
     this.cy = this.dir * this.R;
@@ -197,6 +196,7 @@ export class Pilot {
 
   endCircle(t) {
     this.y = 0;
+    this.shiftLeft = 0;
     const f = this.flight;
     if (!f.circStart) return;
     const dz = this.z - f.circStart.z, dtc = t - f.circStart.t;

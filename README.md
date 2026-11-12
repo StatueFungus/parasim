@@ -43,17 +43,18 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 | Profi | selbst | Draufsicht ohne Kern, nur das gemessene Steigen |
 
 - Beim Kreisen fliegt der Schirm einen echten Kreis (Mittelpunkt, Radius, seitlicher Abstand zur Bartachse). Das Steigen wird an der Position auf dem Kreis berechnet, darum pulsiert das Vario, wenn man neben dem Kern kreist.
-- **Kreis verlagern**: Leertaste kurz loslassen. Man fliegt entlang der Kreistangente geradeaus und der Kreis wandert mit. Wer länger als 6 Flugsekunden loslässt, verlässt den Bart.
-- **Radius** (↑ weiter, ↓ enger, 28–65 m): Enger kreisen passt zu schmalen, starken Kernen und kostet mehr Sinken. Weiter kreisen spart Sinken in breiten Bärten.
-- Gutes Zentrieren lohnt sich: Im Test steigt ein sauber zentrierender Pilot gut ein Drittel besser als die Automatik. Im Wind muss man mit der Drift nachzentrieren.
+- **Zeitlupe**: Beim selbst Zentrieren läuft die Zeit im Kreis mit einem Drittel des Tempos. Ein Kreis dauert dann etwa 7 statt 2 Sekunden.
+- **Kreis verlagern** mit ↑ (am Handy rechts tippen): Der Schirm fliegt 4.5 Flugsekunden (≈ 45 m) geradeaus in die aktuelle Flugrichtung und kreist dann automatisch weiter. Man muss nur den Moment treffen, wenn man auf den Kern zufliegt. In der Stufe Assistiert leuchtet der Assistent dann grün.
+- Der Radius passt sich automatisch an die Breite des Barts an (30–50 m).
+- Gutes Zentrieren lohnt sich: Im Test steigt ein Pilot, der grob im richtigen Moment tippt, ein Drittel besser als die Automatik, im Wind fast doppelt so gut. Ohne Wind reichen meist zwei Tipps.
 - Computerpiloten nutzen die Automatik, je nach Können unterschiedlich nah am Kern.
 
 ## Steuerung
 
 | Taste | Funktion |
 |---|---|
-| Leertaste halten | Kreisen (selbst zentrieren: kurz loslassen = Kreis verlagern) |
-| ↑ / ↓ | Beschleuniger (beim selbst Zentrieren im Kreis: Radius) |
+| Leertaste halten | Kreisen |
+| ↑ / ↓ | Beschleuniger (beim selbst Zentrieren im Kreis: ↑ = Kreis verlagern) |
 | ← / → | Wenden: zurück / wieder auf Kurs |
 | Q / E | Gebirge: Hangkante / Talmitte |
 | Enter | Starten / Hochlaufen |
@@ -64,7 +65,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 | R | Neustart (nur Training) |
 | P / Esc | Pause |
 
-Touch: linke Hälfte halten = kreisen, rechts senkrecht wischen = Beschleuniger.
+Touch: linke Hälfte halten = kreisen, rechts senkrecht wischen = Beschleuniger, beim selbst Zentrieren rechts tippen = Kreis verlagern.
 
 ## Aufbau
 

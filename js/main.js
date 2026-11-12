@@ -1,6 +1,6 @@
 import { Session } from './sim/session.js';
 import { Pilot, LANE_NAMES } from './sim/pilot.js';
-import { GLIDERS, circleSink, bestBar, R_MIN, R_MAX } from './sim/gliders.js';
+import { GLIDERS, circleSink, bestBar } from './sim/gliders.js';
 import { DAY_START } from './sim/world.js';
 import { hash, mulberry32 } from './sim/rng.js';
 import { Renderer, drawBarogram, drawAssist } from './render.js';
@@ -91,6 +91,7 @@ function dailyCfg() {
   };
 }
 
+const SLOWMO = 0.33;
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
 const TERRAIN_NAMES = { flat: 'Flachland', mountain: 'Gebirge' };
@@ -130,7 +131,7 @@ function startGame(cfg) {
     cfg, session, player, ghost,
     showThermals: cfg.showThermals ?? (cfg.mode === 'training' ? prefs.thermals : false),
     coachMsg: '', coachShown: 0, coachCheck: 0, circleHist: [], lastAvg: null,
-    checkT: 0, ended: false, follow: false, missed: null, assistPts: [], wasCircling: false,
+    checkT: 0, ended: false, follow: false, missed: null, assistPts: [], wasCircling: false, timeMul: 1,
   };
   $('assist').hidden = true;
   if (cfg.missedAt != null) game.missed = { x: cfg.missedAt, t: session.t, air: 3 };
@@ -230,6 +231,7 @@ addEventListener('keydown', (e) => {
   if (!game) return;
   const k = e.key;
   if (k === ' ') { input.circle = true; e.preventDefault(); }
+  else if (k === 'ArrowUp' && game.player.circling && game.player.manual) { e.preventDefault(); if (!e.repeat && !paused) game.player.shift(); return; }
   else if (k === 'ArrowUp') { input.up = true; e.preventDefault(); }
   else if (k === 'ArrowDown') { input.down = true; e.preventDefault(); }
   if (e.repeat) return;
@@ -266,17 +268,13 @@ view.addEventListener('pointerdown', (e) => {
   if (!game || paused) return;
   sound.init();
   if (e.clientX < innerWidth / 2) { touches.set(e.pointerId, { kind: 'circle' }); input.touchCircle = true; }
-  else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar, r0: game.player.radiusTarget });
+  else if (game.player.circling && game.player.manual) game.player.shift();
+  else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar });
   view.setPointerCapture?.(e.pointerId);
 });
 view.addEventListener('pointermove', (e) => {
   const t = touches.get(e.pointerId);
-  if (t?.kind !== 'bar' || !game) return;
-  const p = game.player;
-  if (p.circling && p.manual) {
-    p.radiusTarget = t.r0;
-    p.adjustRadius((t.y0 - e.clientY) / 4);
-  } else p.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
+  if (t?.kind === 'bar' && game) game.player.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
 });
 function endTouch(e) {
   touches.delete(e.pointerId);
@@ -360,25 +358,18 @@ function coachTip(s, p) {
   return null;
 }
 
-// Tipps fürs selbst Zentrieren: Kreis aufmachen, Radius an den Bart anpassen.
+// Tipps fürs selbst Zentrieren: Schwankt das Steigen über einen vollen Kreis, liegt der Kern daneben.
 function centeringTip(s, p) {
-  const w = s.world;
-  if (p.opening) return p.openT > 2.5 ? 'Kreis aufgemacht. Leertaste wieder drücken, sonst verlässt du den Bart.' : null;
+  if (p.opening) return null;
   const pts = game.assistPts;
   if (pts.length < 2 || pts[pts.length - 1].ph - pts[0].ph < 2 * Math.PI) return null;
-  // Schwankung des Steigens über den letzten vollen Kreis
   const last = pts[pts.length - 1].ph;
   let lo = Infinity, hi = -Infinity;
   for (let i = pts.length - 1; i >= 0 && last - pts[i].ph < 2 * Math.PI; i--) { lo = Math.min(lo, pts[i].v); hi = Math.max(hi, pts[i].v); }
-  const c = w.nearestCore(p.cx, p.z, s.t, Math.round(p.l), p.cy);
-  if (c && c.r < 170 && p.R > 46) return 'Schmaler Kern: enger kreisen (↓).';
-  if (c && c.s < 1.9 && c.r > 220 && p.R < 36) return 'Breiter, schwacher Bart: weiter kreisen (↑) spart Sinken.';
-  if (hi - lo > 0.7) {
-    return p.centering === 'assist'
-      ? 'Das Steigen schwankt im Kreis. Lass die Leertaste kurz los, wenn du aufs Kreuz zufliegst.'
-      : 'Das Steigen schwankt im Kreis. Lass die Leertaste kurz los, wenn es am stärksten piept.';
-  }
-  return null;
+  if (hi - lo < 0.6) return null;
+  return p.centering === 'assist'
+    ? 'Der Kern liegt neben deinem Kreis. Drück ↑, wenn der Assistent grün leuchtet.'
+    : 'Das Steigen schwankt im Kreis. Drück ↑, wenn es am stärksten piept.';
 }
 
 // Bei Wind steht der Bart schräg: Auf Flughöhe liegt er luvseitig der Wolke. Höchstens alle 4 Flugminuten erinnern.
@@ -404,7 +395,7 @@ function leanTip(s, p) {
 
 // ---------- Cockpit ----------
 const H = {};
-for (const id of ['assist', 'barLbl', 'hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
+for (const id of ['assist', 'hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
 
 function updateHud(dt) {
   const { session: s, player: p, cfg } = game;
@@ -432,10 +423,8 @@ function updateHud(dt) {
   if (avg != null) game.lastAvg = avg;
   H.hAvg.textContent = avg != null ? (avg >= 0 ? '+' : '') + avg.toFixed(1) : game.lastAvg != null ? '(' + game.lastAvg.toFixed(1) + ')' : '–';
 
-  const radiusMode = flying && p.circling && p.manual;
-  H.barLbl.textContent = radiusMode ? 'Kreis' : 'Beschl.';
-  H.hBar.textContent = radiusMode ? Math.round(p.R) + ' m' : Math.round(p.bar * 100) + ' %';
-  H.barFill.style.height = (radiusMode ? (p.radiusTarget - R_MIN) / (R_MAX - R_MIN) : p.bar) * 100 + '%';
+  H.hBar.textContent = Math.round(p.bar * 100) + ' %';
+  H.barFill.style.height = p.bar * 100 + '%';
   const showAssist = flying && p.circling && p.manual;
   H.assist.hidden = !showAssist;
   if (showAssist) drawAssist(H.assist, p, w, s.t, game.assistPts, p.centering === 'assist');
@@ -533,13 +522,14 @@ function focusPilot() {
 function tickGame(dt) {
   const { session: s, player: p, cfg } = game;
   if (!paused && !game.ended) {
-    // Beim selbst Zentrieren steuern ↑/↓ im Kreis den Radius, sonst den Beschleuniger.
-    const radiusMode = p.circling && p.manual;
-    if (input.up) radiusMode ? p.adjustRadius(dt * 22) : (p.bar = Math.min(1, p.bar + dt * 0.9));
-    if (input.down) radiusMode ? p.adjustRadius(-dt * 22) : (p.bar = Math.max(0, p.bar - dt * 0.9));
+    if (input.up) p.bar = Math.min(1, p.bar + dt * 0.9);
+    if (input.down) p.bar = Math.max(0, p.bar - dt * 0.9);
     p.wantCircle = input.circle || input.touchCircle;
     if (p.state === 'flying') fast = false;
-    s.update(dt * (fast ? 8 : 1));
+    // Zeitlupe beim selbst Zentrieren: Ein Kreis dauert dann etwa 7 statt 2 Sekunden.
+    const target = p.circling && p.manual ? SLOWMO : 1;
+    game.timeMul += (target - game.timeMul) * Math.min(1, dt * 4);
+    s.update(dt * (fast ? 8 : game.timeMul));
     // Steigwerte im aktuellen Kreis für Ø-Anzeige (letzte 30 Flugsekunden)
     if (p.circling) {
       game.circleHist.push({ t: s.t, z: p.z });
