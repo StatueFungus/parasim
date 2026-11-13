@@ -1,0 +1,12 @@
+ParaSim {{ .Values.image.tag | default .Chart.AppVersion }} ist installiert.
+
+{{- if .Values.ingress.enabled }}
+Erreichbar unter:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+{{- else }}
+Lokal testen:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "parasim.fullname" . }} 8080:{{ .Values.service.port }}
+  dann http://localhost:8080 öffnen
+{{- end }}

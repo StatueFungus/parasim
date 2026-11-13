@@ -1,6 +1,6 @@
 // Headless-Abgleich: lässt die Bots über mehrere Saaten fliegen und gibt Distanzen aus.
-// Aufruf: node tools/simtest.mjs [terrain] [glider] [wind] [clouds]
-import { Session } from '../js/sim/session.js';
+// Aufruf: node scripts/balance.mjs [terrain] [glider] [wind] [clouds]
+import { Session } from '../src/js/sim/session.js';
 
 const [terrain = 'flat', glider = 'EN-B', wind = '0', clouds = 'cumulus'] = process.argv.slice(2);
 const res = {};

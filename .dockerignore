@@ -1,0 +1,7 @@
+# Nur das, was der Build wirklich braucht
+*
+!package.json
+!scripts/page.mjs
+!scripts/build.mjs
+!src/
+!deploy/nginx/

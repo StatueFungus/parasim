@@ -594,7 +594,8 @@ export function drawBarogram(cv, s, player) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = s.world;
   const flights = s.pilots.flatMap((p) => (p.bestFlight ? [{ p, f: p.bestFlight }] : []));
-  let maxX = 5000, maxZ = w.baseMSL(3600) + 100, minZ = Infinity;
+  const maxZ = w.baseMSL(3600) + 100;
+  let maxX = 5000, minZ = Infinity;
   for (const { f } of flights) for (const q of f.track) maxX = Math.max(maxX, q.x + 500);
   for (let x = -500; x <= maxX; x += maxX / 100) minZ = Math.min(minZ, w.groundAt(x, w.laneCount - 1));
   minZ -= 50;

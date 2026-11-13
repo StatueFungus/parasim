@@ -1,0 +1,12 @@
+apiVersion: v2
+name: parasim
+description: Streckenflug-Simulator für Gleitschirmpiloten im Browser
+type: application
+# Chart- und App-Version werden beim Release aus dem Git-Tag gesetzt.
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - paragliding
+  - simulator
+  - game

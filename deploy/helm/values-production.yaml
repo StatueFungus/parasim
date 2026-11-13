@@ -1,0 +1,36 @@
+# Beispiel für den Produktivbetrieb. An eigenen Cluster anpassen.
+replicaCount: 2
+
+# Private Images aus GHCR brauchen ein Pull-Secret im Namespace:
+#   kubectl -n parasim create secret docker-registry ghcr-pull \
+#     --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token mit read:packages>
+imagePullSecrets:
+  - name: ghcr-pull
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: parasim.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: parasim-tls
+      hosts:
+        - parasim.example.com
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: parasim

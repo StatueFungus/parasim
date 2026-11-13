@@ -1,0 +1,21 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie erwartet
+labels: [bug]
+body:
+  - type: textarea
+    id: beschreibung
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du gemacht, was hast du erwartet, was ist stattdessen passiert?
+    validations:
+      required: true
+  - type: input
+    id: modus
+    attributes:
+      label: Modus und Einstellungen
+      placeholder: z. B. Training, EN-B, Gebirge, Wind 10 km/h, Zentrieren Profi
+  - type: input
+    id: umgebung
+    attributes:
+      label: Browser und Gerät
+      placeholder: z. B. Safari 19 auf iPhone 16

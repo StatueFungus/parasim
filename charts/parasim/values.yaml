@@ -1,0 +1,85 @@
+# Standardwerte für ParaSim. Jeder Wert lässt sich mit --set oder einer eigenen values-Datei überschreiben.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/OWNER/parasim
+  # Leer = appVersion aus Chart.yaml
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Für private Images aus GHCR, z. B. [{ name: ghcr-pull }]
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Die App braucht keinen Zugriff auf die Kubernetes-API
+  automount: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: parasim.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: parasim-tls
+  #    hosts:
+  #      - parasim.example.com
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 16Mi
+  limits:
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 75
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: false
+  # Leer = Zugriff auf Port 8080 von überall im Cluster. Sonst Liste von NetworkPolicyPeer-Objekten,
+  # z. B. [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } }]
+  ingressFrom: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

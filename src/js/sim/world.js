@@ -268,7 +268,7 @@ export class World {
   // In der Talmitte sinkt die Luft als Ausgleich zur Hangthermik etwas stärker.
   bgSink(x, t, l = 0) {
     const n = noise2(this.seed + 21, x / 2200, t / 700);
-    let s = (0.2 + 0.6 * n) * (0.6 + 0.4 * this.dayFactor(t));
+    const s = (0.2 + 0.6 * n) * (0.6 + 0.4 * this.dayFactor(t));
     return s * (1 - 0.7 * this.street(x)) * (1 + 0.25 * l);
   }
 

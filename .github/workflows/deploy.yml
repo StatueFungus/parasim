@@ -1,0 +1,51 @@
+# Rollout in einen Kubernetes-Cluster. Inaktiv, bis die Repository-Variable DEPLOY_ENABLED=true gesetzt
+# und im Environment «production» das Secret KUBECONFIG (Inhalt einer kubeconfig, base64-kodiert) hinterlegt ist.
+name: Deploy
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version ohne v, z. B. 0.2.0"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Kubeconfig einrichten
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+      - name: helm upgrade --install
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${INPUT_VERSION:-${RELEASE_TAG#v}}"
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GH_ACTOR" --password-stdin
+          helm upgrade --install parasim "oci://ghcr.io/${OWNER}/charts/parasim" \
+            --version "$VERSION" \
+            --namespace parasim --create-namespace \
+            -f deploy/helm/values-production.yaml \
+            --wait --atomic --timeout 5m
+          helm test parasim --namespace parasim
