@@ -1,7 +1,11 @@
 # ParaSim
 
 [![CI](https://github.com/StatueFungus/parasim/actions/workflows/ci.yml/badge.svg)](https://github.com/StatueFungus/parasim/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/StatueFungus/parasim/actions/workflows/codeql.yml/badge.svg)](https://github.com/StatueFungus/parasim/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/StatueFungus/parasim?label=Release)](https://github.com/StatueFungus/parasim/releases)
 [![Lizenz: MPL-2.0](https://img.shields.io/badge/Lizenz-MPL--2.0-blue.svg)](LICENSE)
+
+**Direkt spielen: <https://statuefungus.github.io/parasim/>**
 
 Streckenflug-Simulator für Gleitschirmpiloten im Browser: Thermik finden, hochkreisen, weit gleiten.
 
@@ -64,7 +68,7 @@ Wichtige Werte (vollständig in [`charts/parasim/values.yaml`](charts/parasim/va
 | ------------------------------------------------- | ------------------- | ------------------------------------------------ |
 | `replicaCount`                                    | `2`                 | Anzahl Pods (ohne Autoscaling)                   |
 | `image.repository` / `image.tag`                  | GHCR / `appVersion` | Container-Image                                  |
-| `imagePullSecrets`                                | `[]`                | Nötig, solange Image und Repository privat sind  |
+| `imagePullSecrets`                                | `[]`                | Nur für private Registries nötig                 |
 | `ingress.enabled`, `ingress.hosts`, `ingress.tls` | aus                 | Externer Zugriff                                 |
 | `autoscaling.enabled`                             | aus                 | HorizontalPodAutoscaler nach CPU                 |
 | `podDisruptionBudget.enabled`                     | an                  | Mindestens ein Pod bleibt bei Wartung erreichbar |
@@ -94,9 +98,10 @@ Die Pipeline ([`ci.yml`](.github/workflows/ci.yml)) läuft bei jedem Pull Reques
 | **Container-Image**                         | hadolint, Build, Smoke-Test mit schreibgeschütztem Dateisystem, Trivy-Scan                                                                       |
 | **Release** _(nur `main`)_                  | semantic-release: nächste Version, `CHANGELOG.md`, Version in `package.json` und `Chart.yaml`, Tag, GitHub-Release                               |
 | **Veröffentlichen** _(bei neuer Version)_   | Multi-Arch-Image (`<version>`, `<major>.<minor>`, `latest`) mit SBOM und Provenance nach GHCR; Helm-Chart als OCI-Paket nach GHCR und am Release |
+| **GitHub Pages** _(bei neuer Version)_      | `dist/` des Releases unter <https://statuefungus.github.io/parasim/>; manuell erneut auslösbar über _Actions → CI/CD → Run workflow_             |
 | **Rollout** _(bei neuer Version, optional)_ | [`deploy.yml`](.github/workflows/deploy.yml): `helm upgrade --install` und `helm test`                                                           |
 
-Zusätzlich prüft [`pr-title.yml`](.github/workflows/pr-title.yml) den Titel von Pull Requests, denn beim Squash-Merge wird er zur Commit-Nachricht auf `main`.
+[CodeQL](.github/workflows/codeql.yml) analysiert JavaScript-Code und Workflows auf Sicherheitsprobleme. Zusätzlich prüft [`pr-title.yml`](.github/workflows/pr-title.yml) den Titel von Pull Requests, denn beim Squash-Merge wird er zur Commit-Nachricht auf `main`.
 
 Lokal prüfen Git-Hooks (husky) vor jedem Commit die geänderten Dateien (ESLint, Prettier) und die Commit-Nachricht (commitlint). Sie werden mit `npm ci` eingerichtet.
 
@@ -106,7 +111,7 @@ Der Rollout ist inaktiv, bis er konfiguriert ist:
 
 1. Environment `production` anlegen (Settings → Environments) und darin das Secret `KUBECONFIG` hinterlegen: Inhalt einer kubeconfig, base64-kodiert.
 2. Repository-Variable `DEPLOY_ENABLED` auf `true` setzen.
-3. Im Ziel-Namespace ein Pull-Secret `ghcr-pull` anlegen (siehe Kommentar in `deploy/helm/values-production.yaml`) und dort Hostname und Ingress-Klasse anpassen.
+3. In `deploy/helm/values-production.yaml` Hostname und Ingress-Klasse anpassen.
 
 Ein bestimmtes Release lässt sich jederzeit von Hand ausrollen, auch als Rollback: _Actions → Deploy → Run workflow_ mit der gewünschten Version.
 

@@ -1,11 +1,10 @@
 # Beispiel für den Produktivbetrieb. An eigenen Cluster anpassen.
 replicaCount: 2
 
-# Private Images aus GHCR brauchen ein Pull-Secret im Namespace:
+# Image und Chart sind öffentlich. Für eine private Registry hier ein Pull-Secret eintragen:
 #   kubectl -n parasim create secret docker-registry ghcr-pull \
 #     --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token mit read:packages>
-imagePullSecrets:
-  - name: ghcr-pull
+imagePullSecrets: []
 
 ingress:
   enabled: true

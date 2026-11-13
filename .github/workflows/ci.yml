@@ -1,6 +1,7 @@
 # CI/CD: Pull Requests werden geprüft. Jeder Push auf main wird geprüft und – wenn die Commits es verlangen –
 # von semantic-release als neue Version veröffentlicht: Tag, GitHub-Release, Container-Image und Helm-Chart in GHCR,
-# optional Rollout in den Cluster.
+# GitHub Pages, optional Rollout in den Cluster. Manuell gestartet (workflow_dispatch) wird das neueste Release
+# erneut auf GitHub Pages veröffentlicht.
 name: CI/CD
 
 on:
@@ -243,6 +244,43 @@ jobs:
           Image-Digest: \`${DIGEST}\`
           NOTES
           gh release edit "v${VERSION}" --notes-file notes.md
+
+  pages:
+    name: GitHub Pages
+    needs: [test, release]
+    if: ${{ !cancelled() && needs.test.result == 'success' && (needs.release.outputs.published == 'true' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Release-Stand auschecken
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          TAG="${VERSION:+v$VERSION}"
+          TAG="${TAG:-$(git describe --tags --abbrev=0)}"
+          git checkout --quiet "$TAG"
+          echo "APP_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+          echo "Veröffentliche ${TAG} auf GitHub Pages" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: dist/ bauen
+        run: GIT_SHA="$(git rev-parse --short HEAD)" node scripts/build.mjs
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v5
 
   deploy:
     name: Rollout
