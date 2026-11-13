@@ -3,8 +3,8 @@ name: parasim
 description: Streckenflug-Simulator für Gleitschirmpiloten im Browser
 type: application
 # Chart- und App-Version werden beim Release aus dem Git-Tag gesetzt.
-version: 0.3.0
-appVersion: '0.3.0'
+version: 0.3.1
+appVersion: '0.3.1'
 kubeVersion: '>=1.25.0-0'
 home: https://github.com/StatueFungus/parasim
 sources:

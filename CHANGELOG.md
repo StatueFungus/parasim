@@ -2,6 +2,12 @@
 
 Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
+## [0.3.1](https://github.com/StatueFungus/parasim/compare/v0.3.0...v0.3.1) (2026-11-13)
+
+### Fehlerbehebungen
+
+* **hud:** Flugpfad im Zentrierassistenten springt nicht mehr ([72249bb](https://github.com/StatueFungus/parasim/commit/72249bbc438b4da93894bb4373dad498ad77df63))
+
 ## [0.3.0](https://github.com/StatueFungus/parasim/compare/v0.2.1...v0.3.0) (2026-11-13)
 
 ### Neue Funktionen
