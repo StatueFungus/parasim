@@ -24,13 +24,13 @@ export const LESSONS = [
     },
   },
   {
-    id: 'verlagern',
-    title: 'Kreis verlagern',
-    goal: 'Steige in 9 Minuten auf 1050 m über Grund. Ohne den Kreis zu verlagern, reicht die Zeit nicht.',
+    id: 'schieber',
+    title: 'Zentrieren mit dem Schieber',
+    goal: 'Steige in 9 Minuten auf 1050 m über Grund. Mit fester Kurve reicht die Zeit nicht.',
     intro: [
-      'Jetzt zentrierst du selbst. Kreist du neben dem Kern, steigt es auf einer Seite des Kreises mehr als auf der anderen, und das Vario piepst mal schneller, mal langsamer.',
-      'Solange du kreist, läuft die Zeit langsamer. Der Thermik-Assistent zeigt deinen Kreis von oben, das Kreuz markiert den Kern.',
-      'Drück ↑ (am Handy rechts tippen), wenn der Assistent grün leuchtet. Dann fliegst du kurz geradeaus Richtung Kern und kreist danach automatisch weiter. Meist reichen zwei oder drei Mal.',
+      'Jetzt steuerst du die Kurve selbst. Leertaste halten startet eine moderate Linkskurve. Mit ← und → verschiebst du den Kurvenschieber: enger, weiter, geradeaus oder sogar in die andere Richtung. Am Handy ziehst du dafür den Kreis-Daumen nach links oder rechts.',
+      'Kreist du neben dem Kern, steigt es auf einer Seite mehr. Der Thermik-Assistent zeigt deine Bahn von oben, orange heisst Steigen, das Kreuz markiert den Kern.',
+      'Die Technik: Wird das Steigen stärker, mach die Kurve auf (Schieber Richtung Mitte). So fliegst du ein Stück Richtung Kern. Wird es wieder schwächer, dreh enger ein. Lässt du die Leertaste los, fliegst du in die Richtung weiter, in die du gerade schaust.',
     ],
     setup: {
       world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.6, extraThermals: [{ x: 900, w0: 3.3, r: 210, tb: -900, life: 6000 }] },

@@ -16,7 +16,7 @@ ES-Module brauchen einen Webserver; `index.html` direkt als Datei öffnen funkti
 - **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
-- **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Kreis verlagern, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
+- **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
 
 ## Wenden und Linienwahl
 
@@ -36,17 +36,18 @@ ES-Module brauchen einen Webserver; `index.html` direkt als Datei öffnen funkti
 
 Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesaufgabe):
 
-| Stufe | Zentrieren | Thermik-Assistent |
+| Stufe | Kurve | Thermik-Assistent |
 |---|---|---|
-| Automatisch | Die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | – |
-| Assistiert | selbst | Draufsicht auf den Kreis mit Kern-Markierung |
-| Profi | selbst | Draufsicht ohne Kern, nur das gemessene Steigen |
+| Automatisch | feste Kurve, die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | – |
+| Assistiert | Kurvenschieber | Draufsicht mit Kern-Markierung |
+| Profi | Kurvenschieber | Draufsicht ohne Kern, nur das gemessene Steigen |
 
-- Beim Kreisen fliegt der Schirm einen echten Kreis (Mittelpunkt, Radius, seitlicher Abstand zur Bartachse). Das Steigen wird an der Position auf dem Kreis berechnet, darum pulsiert das Vario, wenn man neben dem Kern kreist.
-- **Zeitlupe**: Beim selbst Zentrieren läuft die Zeit im Kreis mit einem Drittel des Tempos. Ein Kreis dauert dann etwa 7 statt 2 Sekunden.
-- **Kreis verlagern** mit ↑ (am Handy rechts tippen): Der Schirm fliegt 4.5 Flugsekunden (≈ 45 m) geradeaus in die aktuelle Flugrichtung und kreist dann automatisch weiter. Man muss nur den Moment treffen, wenn man auf den Kern zufliegt. In der Stufe Assistiert leuchtet der Assistent dann grün.
-- Der Radius passt sich automatisch an die Breite des Barts an (30–50 m).
-- Gutes Zentrieren lohnt sich: Im Test steigt ein Pilot, der grob im richtigen Moment tippt, ein Drittel besser als die Automatik, im Wind fast doppelt so gut. Ohne Wind reichen meist zwei Tipps.
+- **Leertaste halten** startet eine moderate Kurve (≈ 40 m Radius) in der zuletzt geflogenen Drehrichtung.
+- **Kurvenschieber** mit ← / → (am Handy: den Kreis-Daumen waagrecht ziehen): stufenlos von enger Linkskurve über geradeaus bis zur engen Rechtskurve. Der Radius ist `25 m / |Schieber|`; enge Kurven kosten mehr Sinken.
+- **Zentrieren**: Wird das Steigen stärker, Kurve aufmachen (Schieber zur Mitte), so fliegt man Richtung Kern. Wird es schwächer, enger eindrehen.
+- **Ausleiten**: Beim Loslassen fliegt man in die Richtung weiter, in die man gerade schaut, also auf Kurs oder zurück.
+- Die Simulation läuft immer in Echtzeit (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
+- Im Test steigt ein Pilot mit dieser Technik ohne Wind etwa 1.7 statt 1.24 m/s (Automatik), bei 15 km/h Wind 1.1 statt 0.75 m/s. Das gilt auch, wenn der Schieber nur langsam bewegt wird.
 - Computerpiloten nutzen die Automatik, je nach Können unterschiedlich nah am Kern.
 
 ## Steuerung
@@ -54,8 +55,8 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 | Taste | Funktion |
 |---|---|
 | Leertaste halten | Kreisen |
-| ↑ / ↓ | Beschleuniger (beim selbst Zentrieren im Kreis: ↑ = Kreis verlagern) |
-| ← / → | Wenden: zurück / wieder auf Kurs |
+| ↑ / ↓ | Beschleuniger |
+| ← / → | Wenden: zurück / wieder auf Kurs; im Kreis beim selbst Zentrieren: Kurvenschieber |
 | Q / E | Gebirge: Hangkante / Talmitte |
 | Enter | Starten / Hochlaufen |
 | M | MacCready-Wert (0–3) |
@@ -65,7 +66,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 | R | Neustart (nur Training) |
 | P / Esc | Pause |
 
-Touch: linke Hälfte halten = kreisen, rechts senkrecht wischen = Beschleuniger, beim selbst Zentrieren rechts tippen = Kreis verlagern.
+Touch: linke Hälfte halten = kreisen, rechts senkrecht wischen = Beschleuniger, beim selbst Zentrieren den Kreis-Daumen waagrecht ziehen = Kurvenschieber.
 
 ## Aufbau
 

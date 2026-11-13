@@ -1,7 +1,10 @@
 import { GLIDERS, speedFor, sinkFor, circleSink, circleSinkR, bestBar, R_DEFAULT } from './gliders.js';
 
 export const TURN_TIME = 7;      // Flugsekunden für eine 180°-Wende
-export const SHIFT_TIME = 4.5;   // Flugsekunden geradeaus beim Verlagern (≈ 45 m)
+// Kurvenschieber beim Kreisen: steer = −1 (enge Rechtskurve) … 0 (geradeaus) … +1 (enge Linkskurve).
+// Radius = R_TIGHT / |steer|; zu Beginn eine moderate Kurve von etwa 40 m.
+export const R_TIGHT = 25;
+export const STEER_START = 0.62;
 export const LANE_TIME = 55;     // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
 
@@ -26,12 +29,14 @@ export class Pilot {
     this.lane = 0;         // Ziel-Linie
     this.l = 0;            // tatsächliche seitliche Position 0..1
     this.vz = 0; this.vario = 0; this.air = 0; this.netto = 0; this.phase = 0;
-    // Kreisen: Mittelpunkt (cx, cy), Radius R; y ist der seitliche Abstand zur Bartachse.
+    // Kreisen: Kurs heading (0 = Flugrichtung +x, positiv = nach links), Schieber steer, Radius R;
+    // y ist der seitliche Abstand zur Bartachse, (cx, cy) der momentane Kreismittelpunkt.
     // centering: 'auto' | 'assist' | 'pro'; autoOffset: bis auf welchen Bruchteil des Bartradius die Automatik zentriert.
     this.centering = o.centering || 'auto';
     this.autoOffset = o.autoOffset ?? 0.5;
+    this.heading = 0; this.steer = STEER_START; this.lastSteerSign = 1;
     this.R = R_DEFAULT;
-    this.cx = 0; this.cy = 0; this.y = 0; this.shiftLeft = 0; this.drift = 0;
+    this.cx = 0; this.cy = 0; this.y = 0; this.drift = 0;
     this.best = 0;
     this.bestFlight = null;
     this.flights = [];
@@ -43,15 +48,8 @@ export class Pilot {
   get dist() { return Math.max(0, this.x - this.launchX); }
   get turning() { return this.turnLeft > 0; }
   get manual() { return this.centering !== 'auto'; }
-  get opening() { return this.circling && this.shiftLeft > 0; }
 
-  // Kreis verlagern: ein festes Stück geradeaus in der aktuellen Flugrichtung, danach wird weitergekreist.
-  shift() {
-    if (!this.circling || !this.manual || this.shiftLeft > 0) return false;
-    this.shiftLeft = SHIFT_TIME;
-    this.flight.shifts++;
-    return true;
-  }
+  setSteer(v) { this.steer = Math.max(-1, Math.min(1, v)); }
 
   score() { return Math.max(this.best, this.state === 'flying' ? this.dist : 0); }
 
@@ -83,7 +81,7 @@ export class Pilot {
     this.trail = [];
     this.flight = {
       launchT: t, track: [{ t, x: this.x, z: this.z, c: 0, l: 0 }],
-      circT: 0, glideT: 0, gain: 0, thermals: 0, maxZ: this.z, best30: 0, turns: 0, shifts: 0, laneT: [0, 0],
+      circT: 0, glideT: 0, gain: 0, thermals: 0, maxZ: this.z, best30: 0, turns: 0, laneT: [0, 0],
       circStart: null, lastSample: t, lastTrail: t, dist: 0,
     };
   }
@@ -103,25 +101,21 @@ export class Pilot {
 
     let vz;
     if (this.circling) {
+      // Drehrate aus dem Schieber; enge Kurven kosten mehr Sinken, geradeaus fliegt man mit Trimm.
+      const a = Math.abs(this.steer);
       const vms = this.v / 3.6;
-      if (this.opening) {
-        this.shiftLeft = Math.max(0, this.shiftLeft - dt);
-        // Geradeaus entlang der Kreistangente: Der ganze Kreis wandert mit.
-        this.x += -Math.sin(this.phase) * vms * dt + wind * dt;
-        this.y += Math.cos(this.phase) * vms * dt;
-        this.cx = this.x - this.R * Math.cos(this.phase);
-        this.cy = this.y - this.R * Math.sin(this.phase);
-        this.v += (g.vTrim - this.v) * Math.min(1, dt / 3);
-        vz = air - sinkFor(g, this.v);
-      } else {
-        this.phase += (vms / this.R) * dt;
-        this.cx += wind * dt;
-        if (!this.manual) this.autoCenter(world, t, dt);
-        this.x = this.cx + this.R * Math.cos(this.phase);
-        this.y = this.cy + this.R * Math.sin(this.phase);
-        this.v += (g.vTrim - 3 - this.v) * Math.min(1, dt / 3);
-        vz = air - circleSinkR(g, this.R);
-      }
+      this.R = a > 0.02 ? R_TIGHT / a : Infinity;
+      this.heading += (this.steer * vms / R_TIGHT) * dt;
+      this.x += (Math.cos(this.heading) * vms + wind) * dt;
+      this.y += Math.sin(this.heading) * vms * dt;
+      const sg = Math.sign(this.steer) || 1;
+      this.cx = this.x - sg * Math.min(this.R, 1e4) * Math.sin(this.heading);
+      this.cy = this.y + sg * Math.min(this.R, 1e4) * Math.cos(this.heading);
+      if (!this.manual) this.autoCenter(world, t, dt);
+      this.v += (g.vTrim - 3 * Math.min(1, a / 0.5) - this.v) * Math.min(1, dt / 3);
+      const sink = Number.isFinite(this.R) ? Math.max(sinkFor(g, this.v), circleSinkR(g, this.R)) : sinkFor(g, this.v);
+      vz = air - sink;
+      this.phase = this.heading;
       f.circT += dt;
     } else if (this.turning) {
       // In der Wende kommt man kaum voran und verliert etwas mehr Höhe.
@@ -168,21 +162,18 @@ export class Pilot {
     if (this.z <= gz) { this.z = gz; this.land(t); }
   }
 
-  // Einkreisen aus dem Geradeausflug: Die aktuelle Position liegt auf dem Kreis, der Mittelpunkt seitlich daneben.
-  // Beim selbst Zentrieren passt sich der Radius der Bartbreite an: schmale Kerne eng, breite Bärte weit.
+  // Einkreisen aus dem Geradeausflug in der aktuellen Flugrichtung, mit moderater Kurve
+  // in die zuletzt geflogene Drehrichtung.
   startCircle(world, t) {
     this.circling = true;
-    this.shiftLeft = 0;
-    const c = this.manual ? world.nearestCore(this.x, this.z, t, Math.round(this.l)) : null;
-    this.R = c ? Math.max(30, Math.min(50, c.r * 0.2)) : R_DEFAULT;
+    this.heading = this.dir > 0 ? 0 : Math.PI;
     this.y = 0;
-    this.cx = this.x;
-    this.cy = this.dir * this.R;
-    this.phase = -this.dir * Math.PI / 2;
+    this.steer = STEER_START * (this.manual ? this.lastSteerSign : 1);
+    this.R = R_TIGHT / Math.abs(this.steer);
     this.flight.circStart = { t, z: this.z };
   }
 
-  // Automatik: zieht den Kreismittelpunkt bis auf autoOffset · Bartradius an den Kern.
+  // Automatik: zieht den Kreis bis auf autoOffset · Bartradius an den Kern.
   autoCenter(world, t, dt) {
     const c = world.nearestCore(this.cx, this.z, t, Math.round(this.l), this.cy);
     if (!c) return;
@@ -190,13 +181,17 @@ export class Pilot {
     const target = this.autoOffset * c.r;
     if (d <= target || d > 1.7 * c.r + this.R) return;
     const m = Math.min(d - target, 3.2 * this.glider.center * dt);
-    this.cx -= (c.dx / d) * m;
-    this.cy -= (c.dy / d) * m;
+    const mx = -(c.dx / d) * m, my = -(c.dy / d) * m;
+    this.x += mx; this.y += my; this.cx += mx; this.cy += my;
   }
 
+  // Ausleiten: Man fliegt in die Richtung weiter, in die man gerade schaut (beim selbst Zentrieren).
   endCircle(t) {
+    if (this.manual) {
+      this.dir = Math.cos(this.heading) >= 0 ? 1 : -1;
+      if (Math.abs(this.steer) > 0.02) this.lastSteerSign = Math.sign(this.steer);
+    }
     this.y = 0;
-    this.shiftLeft = 0;
     const f = this.flight;
     if (!f.circStart) return;
     const dz = this.z - f.circStart.z, dtc = t - f.circStart.t;

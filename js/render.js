@@ -492,8 +492,9 @@ export class Renderer {
   }
 }
 
-// Thermik-Assistent: Draufsicht auf den Kreis im mitfliegenden Bezugssystem (Wind herausgerechnet),
-// eingefärbt nach dem Steigen. Rechts ist Kursrichtung. Mit showCore wird der Kern markiert.
+// Thermik-Assistent: Draufsicht im mitfliegenden Bezugssystem (Wind herausgerechnet), eingefärbt nach Steigen.
+// Rechts ist Kursrichtung. Die Ansicht folgt dem Mittel der Flugbahn der letzten 25 Flugsekunden.
+// Mit showCore wird der Kern markiert.
 export function drawAssist(cv, p, w, t, pts, showCore) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const S = cv.clientWidth;
@@ -502,17 +503,26 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, S, S);
   const mid = S / 2, range = 120, k = (mid - 8) / range;
-  const cx0 = p.cx - p.drift, cy0 = p.cy;
-  const X = (ax) => mid + (ax - cx0) * k;
-  const Y = (ay) => mid - (ay - cy0) * k;
+
+  // Ansichtsmitte: Mittel der jüngsten Bahn, sanft nachgeführt
+  let mx = 0, my = 0, n = 0;
+  for (let i = pts.length - 1; i >= 0 && t - pts[i].t < 25; i--) { mx += pts[i].x; my += pts[i].y; n++; }
+  const tx = n ? mx / n : p.x - p.drift, ty = n ? my / n : p.y;
+  const v = (cv._view ??= { x: tx, y: ty });
+  if (Math.hypot(v.x - tx, v.y - ty) > 300) { v.x = tx; v.y = ty; }
+  v.x += (tx - v.x) * 0.08; v.y += (ty - v.y) * 0.08;
+  const X = (ax) => mid + (ax - v.x) * k;
+  const Y = (ay) => mid - (ay - v.y) * k;
 
   ctx.save();
   ctx.beginPath(); ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2); ctx.clip();
-  // Sollkreis
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-  ctx.setLineDash([3, 4]);
-  ctx.beginPath(); ctx.arc(mid, mid, p.R * k, 0, Math.PI * 2); ctx.stroke();
-  ctx.setLineDash([]);
+  // Vorschau der aktuellen Kurve
+  if (Number.isFinite(p.R) && p.R < 200) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(X(p.cx - p.drift), Y(p.cy), p.R * k, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
   // Gemessenes Steigen entlang der Flugbahn
   for (const q of pts) {
     if (q.v > 0) {
@@ -524,15 +534,10 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
     }
   }
   // Kern
-  let now = false;
   if (showCore) {
-    const c = w.nearestCore(p.cx, p.z, t, Math.round(p.l), p.cy);
+    const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y);
     if (c && Math.hypot(c.dx, c.dy) < 3 * c.r) {
-      // «Jetzt»: Flugrichtung zeigt (±40°) auf den Kern und der Kreis liegt noch merklich daneben
-      const dc = Math.hypot(c.dx, c.dy);
-      const hx0 = -Math.sin(p.phase), hy0 = Math.cos(p.phase);
-      now = !p.opening && dc > 30 && (-c.dx * hx0 - c.dy * hy0) / dc > 0.77;
-      let kx = X(cx0 - c.dx), ky = Y(cy0 - c.dy);
+      let kx = X(p.x - p.drift - c.dx), ky = Y(p.y - c.dy);
       const d = Math.hypot(kx - mid, ky - mid), lim = mid - 12;
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.lineWidth = 1.5;
@@ -556,7 +561,7 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   }
   // Schirm mit Flugrichtung
   const gx = X(p.x - p.drift), gy = Y(p.y);
-  const hx = -Math.sin(p.phase), hy = -Math.cos(p.phase);
+  const hx = Math.cos(p.heading), hy = -Math.sin(p.heading);
   ctx.fillStyle = p.color;
   ctx.beginPath();
   ctx.moveTo(gx + hx * 8, gy + hy * 8);
@@ -564,21 +569,10 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.lineTo(gx - hx * 5 + hy * 4, gy - hy * 5 - hx * 4);
   ctx.fill();
   ctx.restore();
-  if (now) {
-    ctx.strokeStyle = 'rgba(69,211,154,0.95)';
-    ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(mid, mid, mid - 3, 0, Math.PI * 2); ctx.stroke();
-  }
-  // Beschriftung
   ctx.font = '600 10px "Saira Semi Condensed", system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(200,215,228,0.85)';
   ctx.fillText('Kurs →', mid, 16);
-  if (now || p.opening) {
-    ctx.font = '700 13px "Saira Semi Condensed", system-ui, sans-serif';
-    ctx.fillStyle = p.opening ? 'rgba(255,176,46,0.95)' : 'rgba(69,211,154,1)';
-    ctx.fillText(p.opening ? 'verlagert …' : 'Jetzt ↑', mid, S - 14);
-  } else ctx.fillText('Zeitlupe', mid, S - 14);
 }
 
 // Barogramm: Höhe über Strecke, Kreisen hervorgehoben, Gegner dünn dahinter.

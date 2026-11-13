@@ -24,7 +24,7 @@ let game = null;
 let demo = null;
 let paused = false;
 let fast = false;
-const input = { circle: false, up: false, down: false, touchCircle: false };
+const input = { circle: false, up: false, down: false, left: false, right: false, touchCircle: false };
 
 // ---------- Hilfen ----------
 const km = (m) => (m / 1000).toFixed(1) + ' km';
@@ -91,7 +91,8 @@ function dailyCfg() {
   };
 }
 
-const SLOWMO = 0.33;
+const STEER_RATE = 1.2;   // Schieberweg pro echter Sekunde bei gehaltener Pfeiltaste
+const STEER_PX = 110;     // Daumenweg in Pixeln für eine Schiebereinheit
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
 const TERRAIN_NAMES = { flat: 'Flachland', mountain: 'Gebirge' };
@@ -131,7 +132,7 @@ function startGame(cfg) {
     cfg, session, player, ghost,
     showThermals: cfg.showThermals ?? (cfg.mode === 'training' ? prefs.thermals : false),
     coachMsg: '', coachShown: 0, coachCheck: 0, circleHist: [], lastAvg: null,
-    checkT: 0, ended: false, follow: false, missed: null, assistPts: [], wasCircling: false, timeMul: 1,
+    checkT: 0, ended: false, follow: false, missed: null, assistPts: [], wasCircling: false,
   };
   $('assist').hidden = true;
   if (cfg.missedAt != null) game.missed = { x: cfg.missedAt, t: session.t, air: 3 };
@@ -231,12 +232,15 @@ addEventListener('keydown', (e) => {
   if (!game) return;
   const k = e.key;
   if (k === ' ') { input.circle = true; e.preventDefault(); }
-  else if (k === 'ArrowUp' && game.player.circling && game.player.manual) { e.preventDefault(); if (!e.repeat && !paused) game.player.shift(); return; }
   else if (k === 'ArrowUp') { input.up = true; e.preventDefault(); }
   else if (k === 'ArrowDown') { input.down = true; e.preventDefault(); }
+  // ←/→: im Kreis (selbst zentrieren) der Kurvenschieber, sonst Wenden
+  else if (k === 'ArrowLeft') { input.left = true; e.preventDefault(); }
+  else if (k === 'ArrowRight') { input.right = true; e.preventDefault(); }
   if (e.repeat) return;
-  if (k === 'ArrowLeft') { e.preventDefault(); turnTo(-1); }
-  else if (k === 'ArrowRight') { e.preventDefault(); turnTo(1); }
+  const steering = game.player.circling && game.player.manual;
+  if (k === 'ArrowLeft') { if (!steering) turnTo(-1); }
+  else if (k === 'ArrowRight') { if (!steering) turnTo(1); }
   else if (k === 'q' || k === 'Q') laneTo(0);
   else if (k === 'e' || k === 'E') laneTo(1);
   if (k === 'Enter') { e.preventDefault(); launchOrRestart(); }
@@ -258,23 +262,32 @@ addEventListener('keyup', (e) => {
   if (e.key === ' ') input.circle = false;
   else if (e.key === 'ArrowUp') input.up = false;
   else if (e.key === 'ArrowDown') input.down = false;
+  else if (e.key === 'ArrowLeft') input.left = false;
+  else if (e.key === 'ArrowRight') input.right = false;
 });
-addEventListener('blur', () => { input.circle = input.up = input.down = input.touchCircle = false; });
+addEventListener('blur', () => { input.circle = input.up = input.down = input.left = input.right = input.touchCircle = false; });
 
-// Touch: linke Hälfte halten = kreisen, rechte Hälfte senkrecht wischen = Beschleuniger
+// Touch: linke Hälfte halten = kreisen; beim selbst Zentrieren mit demselben Daumen waagrecht ziehen = Kurvenschieber.
+// Rechte Hälfte senkrecht wischen = Beschleuniger.
 const touches = new Map();
 const view = $('view');
 view.addEventListener('pointerdown', (e) => {
   if (!game || paused) return;
   sound.init();
-  if (e.clientX < innerWidth / 2) { touches.set(e.pointerId, { kind: 'circle' }); input.touchCircle = true; }
-  else if (game.player.circling && game.player.manual) game.player.shift();
+  if (e.clientX < innerWidth / 2) { touches.set(e.pointerId, { kind: 'circle', x0: e.clientX, s0: null }); input.touchCircle = true; }
   else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar });
   view.setPointerCapture?.(e.pointerId);
 });
 view.addEventListener('pointermove', (e) => {
   const t = touches.get(e.pointerId);
-  if (t?.kind === 'bar' && game) game.player.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
+  if (!t || !game) return;
+  const p = game.player;
+  if (t.kind === 'bar') p.bar = Math.max(0, Math.min(1, t.bar0 + (t.y0 - e.clientY) / 160));
+  else if (p.circling && p.manual) {
+    // Anker setzen, sobald der Kreis läuft; nach rechts ziehen = Rechtskurve
+    if (t.s0 == null) { t.s0 = p.steer; t.x0 = e.clientX; }
+    p.setSteer(t.s0 - (e.clientX - t.x0) / STEER_PX);
+  }
 });
 function endTouch(e) {
   touches.delete(e.pointerId);
@@ -358,18 +371,17 @@ function coachTip(s, p) {
   return null;
 }
 
-// Tipps fürs selbst Zentrieren: Schwankt das Steigen über einen vollen Kreis, liegt der Kern daneben.
+// Tipps fürs selbst Zentrieren: Schwankt das Steigen über die letzten 25 Flugsekunden stark, liegt der Kern daneben.
 function centeringTip(s, p) {
-  if (p.opening) return null;
   const pts = game.assistPts;
-  if (pts.length < 2 || pts[pts.length - 1].ph - pts[0].ph < 2 * Math.PI) return null;
-  const last = pts[pts.length - 1].ph;
+  if (!pts.length || s.t - pts[0].t < 25) return null;
+  if (Math.abs(p.steer) < 0.15) return 'Du fliegst fast geradeaus. Mit dem Schieber wieder eindrehen, sonst verlässt du den Bart.';
   let lo = Infinity, hi = -Infinity;
-  for (let i = pts.length - 1; i >= 0 && last - pts[i].ph < 2 * Math.PI; i--) { lo = Math.min(lo, pts[i].v); hi = Math.max(hi, pts[i].v); }
+  for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < 25; i--) { lo = Math.min(lo, pts[i].v); hi = Math.max(hi, pts[i].v); }
   if (hi - lo < 0.6) return null;
   return p.centering === 'assist'
-    ? 'Der Kern liegt neben deinem Kreis. Drück ↑, wenn der Assistent grün leuchtet.'
-    : 'Das Steigen schwankt im Kreis. Drück ↑, wenn es am stärksten piept.';
+    ? 'Der Kern liegt neben deinem Kreis. Fliegst du aufs Kreuz zu, Kurve aufmachen (Schieber zur Mitte), danach wieder eindrehen.'
+    : 'Das Steigen schwankt. Wird es stärker, Kurve aufmachen (Schieber zur Mitte); wird es schwächer, enger eindrehen.';
 }
 
 // Bei Wind steht der Bart schräg: Auf Flughöhe liegt er luvseitig der Wolke. Höchstens alle 4 Flugminuten erinnern.
@@ -395,7 +407,7 @@ function leanTip(s, p) {
 
 // ---------- Cockpit ----------
 const H = {};
-for (const id of ['assist', 'hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
+for (const id of ['assist', 'steerBox', 'steerKnob', 'steerTxt', 'hLane', 'hRidge', 'bTurn', 'bLane', 'hRemain', 'hClock', 'hDist', 'hRank', 'hWind', 'hBase', 'hVario', 'hAvg', 'vNeedle', 'hBar', 'barFill', 'stf', 'hAgl', 'hMsl', 'hSpeed', 'hGs', 'hLd', 'ground', 'gTitle', 'gText', 'gMeterFill', 'gStart', 'gFast', 'gEnd', 'coach', 'goal']) H[id] = $(id);
 
 function updateHud(dt) {
   const { session: s, player: p, cfg } = game;
@@ -427,6 +439,12 @@ function updateHud(dt) {
   H.barFill.style.height = p.bar * 100 + '%';
   const showAssist = flying && p.circling && p.manual;
   H.assist.hidden = !showAssist;
+  H.steerBox.hidden = !showAssist;
+  if (showAssist) {
+    H.steerKnob.style.left = `${50 - p.steer * 46}%`;
+    H.steerTxt.textContent = Math.abs(p.steer) < 0.03 ? 'geradeaus'
+      : `${p.steer > 0 ? 'Links' : 'Rechts'} · ${Math.round(p.R)} m`;
+  }
   if (showAssist) drawAssist(H.assist, p, w, s.t, game.assistPts, p.centering === 'assist');
   const wind = w.windAt(s.t, p.l, aglNow);
   const stf = flying && !p.circling ? bestBar(g, p.mc, p.netto, wind * p.dir) : 0;
@@ -526,10 +544,11 @@ function tickGame(dt) {
     if (input.down) p.bar = Math.max(0, p.bar - dt * 0.9);
     p.wantCircle = input.circle || input.touchCircle;
     if (p.state === 'flying') fast = false;
-    // Zeitlupe beim selbst Zentrieren: Ein Kreis dauert dann etwa 7 statt 2 Sekunden.
-    const target = p.circling && p.manual ? SLOWMO : 1;
-    game.timeMul += (target - game.timeMul) * Math.min(1, dt * 4);
-    s.update(dt * (fast ? 8 : game.timeMul));
+    if (p.circling && p.manual) {
+      if (input.left) p.setSteer(p.steer + dt * STEER_RATE);
+      if (input.right) p.setSteer(p.steer - dt * STEER_RATE);
+    }
+    s.update(dt * (fast ? 8 : 1));
     // Steigwerte im aktuellen Kreis für Ø-Anzeige (letzte 30 Flugsekunden)
     if (p.circling) {
       game.circleHist.push({ t: s.t, z: p.z });
@@ -539,7 +558,7 @@ function tickGame(dt) {
     if (p.circling && !game.wasCircling) game.assistPts.length = 0;
     game.wasCircling = p.circling;
     if (p.circling) {
-      game.assistPts.push({ x: p.x - p.drift, y: p.y, v: p.vz, ph: p.phase });
+      game.assistPts.push({ x: p.x - p.drift, y: p.y, v: p.vz, t: s.t });
       if (game.assistPts.length > 420) game.assistPts.shift();
     }
     if (p.state === 'flying' && !p.circling && p.dir === 1 && p.air - circleSink(p.glider) > 0.4) {

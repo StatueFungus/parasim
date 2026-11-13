@@ -46,6 +46,10 @@
     </div>
 
     <canvas id="assist" class="assist" aria-label="Thermik-Assistent" hidden></canvas>
+    <div id="steerBox" class="steer" aria-label="Kurvenschieber" hidden>
+      <div class="steer-track"><span class="steer-mid"></span><span id="steerKnob" class="steer-knob"></span></div>
+      <div class="steer-lbl"><span>← enger links</span><b id="steerTxt">Links · 40 m</b><span>enger rechts →</span></div>
+    </div>
 
     <div class="maneuver">
       <button id="bTurn" class="tool" title="Wenden (← zurück, → auf Kurs)">Wenden <kbd>←</kbd></button>
@@ -113,13 +117,13 @@
               <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Beschleuniger</dd>
               <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Wenden: zurück / wieder auf Kurs</dd>
               <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Gebirge: zur Hangkante / in die Talmitte</dd>
-              <dt>Im Kreis: <kbd>↑</kbd></dt><dd>Selbst zentrieren: Kreis in Flugrichtung verlagern</dd>
+              <dt>Im Kreis: <kbd>←</kbd> <kbd>→</kbd></dt><dd>Selbst zentrieren: Kurvenschieber (enger, aufmachen, Richtung wechseln)</dd>
               <dt><kbd>Enter</kbd></dt><dd>Starten / Neustart</dd>
               <dt><kbd>M</kbd></dt><dd>MacCready-Wert</dd>
               <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>S</kbd> <kbd>Z</kbd></dt><dd>Thermik, Tipps, Ton, Zoom</dd>
               <dt><kbd>P</kbd></dt><dd>Pause</dd>
             </dl>
-            <p class="note">Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger. Beim selbst Zentrieren rechts tippen zum Verlagern.</p>
+            <p class="note">Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger. Beim selbst Zentrieren mit dem Kreis-Daumen waagrecht ziehen, um die Kurve zu steuern.</p>
           </div>
           <div>
             <h3>Taktik</h3>
@@ -176,7 +180,7 @@
         <div class="seg" id="sCenter">
           <button data-v="auto">Automatisch</button><button data-v="assist">Assistiert</button><button data-v="pro">Profi</button>
         </div>
-        <p class="hint">Assistiert und Profi: Du zentrierst selbst. Beim Kreisen läuft die Zeit langsamer, mit ↑ (am Handy rechts tippen) verlagerst du den Kreis in Flugrichtung. Gilt auch für die Tagesaufgabe.</p>
+        <p class="hint">Assistiert und Profi: Du steuerst die Kurve selbst. Beim Kreisen regeln ← / → den Kurvenschieber stufenlos, von enger Linkskurve über geradeaus bis zur Rechtskurve (am Handy mit dem Kreis-Daumen waagrecht ziehen). Gilt auch für die Tagesaufgabe.</p>
       </div>
       <div class="field">
         <span class="flbl">Gegner</span>

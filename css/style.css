@@ -121,6 +121,22 @@ kbd {
   background: var(--glass); border: 1px solid var(--line);
 }
 
+.steer {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 32px)); padding: 10px 14px 8px; border-radius: 12px;
+  background: var(--glass); border: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.steer-track { position: relative; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(255,84,112,0.55), rgba(255,255,255,0.08) 50%, rgba(255,84,112,0.55)); }
+.steer-mid { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: rgba(255,255,255,0.6); }
+.steer-knob {
+  position: absolute; top: 50%; width: 22px; height: 22px; margin-left: -11px; transform: translateY(-50%);
+  border-radius: 50%; background: var(--text); box-shadow: 0 0 0 3px rgba(255,84,112,0.6);
+}
+.steer-lbl { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--f-display); font-size: 11px; color: var(--muted); }
+.steer-lbl b { font-size: 14px; color: var(--text); }
+
 .maneuver {
   position: absolute; top: 50%; transform: translateY(-50%);
   right: calc(max(16px, env(safe-area-inset-right, 0px)) + 84px);
@@ -296,6 +312,7 @@ input[type="range"] { width: 100%; accent-color: var(--canopy); }
   .track { height: 90px; }
   .maneuver { right: calc(max(16px, env(safe-area-inset-right, 0px)) + 66px); }
   .assist { width: 112px; height: 112px; left: calc(max(16px, env(safe-area-inset-left, 0px)) + 150px); }
+  .steer { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); padding: 6px 10px; }
   .maneuver .tool { font-size: 11px; padding: 6px 8px; }
   .bottombar { gap: 16px; padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
   .coach { top: calc(52px + env(safe-area-inset-top, 0px)); font-size: 13px; }
