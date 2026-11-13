@@ -1,5 +1,8 @@
 # ParaSim
 
+[![CI](https://github.com/StatueFungus/parasim/actions/workflows/ci.yml/badge.svg)](https://github.com/StatueFungus/parasim/actions/workflows/ci.yml)
+[![Lizenz: MPL-2.0](https://img.shields.io/badge/Lizenz-MPL--2.0-blue.svg)](LICENSE)
+
 Streckenflug-Simulator für Gleitschirmpiloten im Browser: Thermik finden, hochkreisen, weit gleiten.
 
 Eine Runde simuliert zwei Flugstunden ab 11:30 Uhr. Thermik entsteht, wächst von unten zur Wolkenbasis, verschmilzt und zerfällt. Wind versetzt die Bärte, im Gebirge entscheidet die Linienwahl. Wer will, zentriert selbst mit einem stufenlosen Kurvenschieber.
@@ -38,12 +41,12 @@ docker run --rm -p 8080:8080 --read-only --tmpfs /tmp parasim
 
 Das Image basiert auf `nginx-unprivileged`, läuft als Benutzer 101 auf Port 8080, verträgt ein schreibgeschütztes Dateisystem und setzt Security-Header (CSP, `X-Frame-Options`, `Permissions-Policy`).
 
-Fertige Images liegen nach jedem Release unter `ghcr.io/<owner>/parasim` (amd64 und arm64, mit SBOM und Provenance).
+Fertige Images liegen nach jedem Release unter `ghcr.io/statuefungus/parasim` (amd64 und arm64, mit SBOM und Provenance).
 
 ## Kubernetes mit Helm
 
 ```sh
-helm install parasim oci://ghcr.io/<owner>/charts/parasim --version <version> \
+helm install parasim oci://ghcr.io/statuefungus/charts/parasim --version <version> \
   --namespace parasim --create-namespace
 ```
 

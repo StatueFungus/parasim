@@ -18,6 +18,7 @@ ARG GIT_SHA="unknown"
 LABEL org.opencontainers.image.title="ParaSim" \
       org.opencontainers.image.description="Streckenflug-Simulator für Gleitschirmpiloten im Browser" \
       org.opencontainers.image.licenses="MPL-2.0" \
+      org.opencontainers.image.source="https://github.com/StatueFungus/parasim" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}"
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
