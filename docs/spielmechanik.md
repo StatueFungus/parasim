@@ -38,7 +38,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 
 | Stufe       | Kurve                                                                                   | Thermik-Assistent                               |
 | ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Automatisch | feste Kurve, die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | –                                               |
+| Automatisch | feste Kurve, die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | Draufsicht mit Kern-Markierung, zum Zuschauen   |
 | Assistiert  | Kurvenschieber                                                                          | Draufsicht mit Kern-Markierung                  |
 | Profi       | Kurvenschieber                                                                          | Draufsicht ohne Kern, nur das gemessene Steigen |
 

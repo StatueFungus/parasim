@@ -196,6 +196,7 @@ function startGame(cfg) {
   fast = false;
   show(null);
   $('hud').hidden = false;
+  toggleToolMenu(false);
   $('bThermals').hidden = !(cfg.mode === 'training' || cfg.lesson);
   setPressed($('bThermals'), game.showThermals);
   $('goal').hidden = !cfg.lesson;
@@ -340,7 +341,8 @@ addEventListener('keydown', (e) => {
   if (k === 'Enter') {
     e.preventDefault();
     launchOrRestart();
-  } else if (k === 'p' || k === 'P' || k === 'Escape') setPause(!paused);
+  } else if (k === 'Escape' && !$('toolMenu').hidden) toggleToolMenu(false);
+  else if (k === 'p' || k === 'P' || k === 'Escape') setPause(!paused);
   else if (paused) return;
   else if (k === 'm' || k === 'M') cycleMc();
   else if (k === 't' || k === 'T') toggleThermals();
@@ -414,6 +416,18 @@ $('bCoach').onclick = toggleCoach;
 $('bSound').onclick = toggleSound;
 $('bZoom').onclick = () => renderer.cycleZoom();
 $('bPause').onclick = () => setPause(true);
+// Optionen hinter dem Zahnrad; schliesst bei Klick daneben oder Escape
+function toggleToolMenu(open = $('toolMenu').hidden) {
+  $('toolMenu').hidden = !open;
+  $('bMenu').setAttribute('aria-expanded', String(open));
+}
+$('bMenu').onclick = (e) => {
+  e.stopPropagation();
+  toggleToolMenu();
+};
+document.addEventListener('pointerdown', (e) => {
+  if (!$('toolMenu').hidden && !e.target.closest('.tools')) toggleToolMenu(false);
+});
 $('bMc').onclick = cycleMc;
 $('bTurn').onclick = () => turnTo();
 $('bLane').onclick = () => laneTo();
@@ -547,6 +561,7 @@ function leanTip(s, p) {
 // ---------- Cockpit ----------
 const H = {};
 for (const id of [
+  'hud',
   'assist',
   'steerBox',
   'steerKnob',
@@ -557,6 +572,7 @@ for (const id of [
   'bLane',
   'hRemain',
   'hClock',
+  'hClockGround',
   'hDist',
   'hRank',
   'hWind',
@@ -589,7 +605,7 @@ function updateHud(dt) {
   const w = s.world;
   const g = p.glider;
   H.hRemain.textContent = hmm(s.remaining());
-  H.hClock.textContent = clockOf(s.t);
+  H.hClock.textContent = H.hClockGround.textContent = clockOf(s.t);
   const cur = p.state === 'flying' ? p.dist : p.best;
   H.hDist.textContent = km(cur) + (p.state === 'flying' && p.dir === -1 ? ' ↩' : '');
   if (s.pilots.length > 1) {
@@ -602,10 +618,11 @@ function updateHud(dt) {
   H.hBase.textContent = Math.round(w.baseMSL(s.t)) + ' m';
 
   const flying = p.state === 'flying';
+  H.hud.classList.toggle('aloft', flying);
   const v = flying ? p.vario : 0;
   H.hVario.textContent = (v > 0.05 ? '+' : '') + v.toFixed(1);
   H.hVario.className = v > 0.1 ? 'up' : v < -0.1 ? 'down' : '';
-  H.vNeedle.style.top = `${50 - Math.max(-5, Math.min(5, v)) * 10}%`;
+  H.vNeedle.style.left = `${50 + Math.max(-5, Math.min(5, v)) * 10}%`;
   const avg = circleAvg(p, s.t);
   if (avg != null) game.lastAvg = avg;
   H.hAvg.textContent =
@@ -613,14 +630,18 @@ function updateHud(dt) {
 
   H.hBar.textContent = Math.round(p.bar * 100) + ' %';
   H.barFill.style.height = p.bar * 100 + '%';
-  const showAssist = flying && p.circling && p.manual;
+  // Den Assistenten gibt es in jedem Kreis, beim automatischen Zentrieren zum Zuschauen und Lernen.
+  // Den Schieber nur, wenn man selbst steuert; den Kern zeigen Automatik und Assistiert, Profi nicht.
+  const showAssist = flying && p.circling;
+  const steering = showAssist && p.manual;
   H.assist.hidden = !showAssist;
-  H.steerBox.hidden = !showAssist;
-  if (showAssist) {
+  H.steerBox.hidden = !steering;
+  H.hud.classList.toggle('steering', steering);
+  if (steering) {
     H.steerKnob.style.left = `${50 - p.steer * 46}%`;
     H.steerTxt.textContent = Math.abs(p.steer) < 0.03 ? 'geradeaus' : `${p.steer > 0 ? 'Links' : 'Rechts'} · ${Math.round(p.R)} m`;
   }
-  if (showAssist) drawAssist(H.assist, p, w, s.t, game.assistPts, p.centering === 'assist');
+  if (showAssist) drawAssist(H.assist, p, w, s.t, game.assistPts, p.centering !== 'pro');
   const wind = w.windAt(s.t, p.l, aglNow);
   const stf = flying && !p.circling ? bestBar(g, p.mc, p.netto, wind * p.dir) : 0;
   H.stf.style.bottom = stf * 100 + '%';
@@ -705,9 +726,22 @@ function updateGroundPanel(s, p, cfg) {
 }
 
 // ---------- Hauptschleife ----------
+// Mit ?fps in der Adresse: Bildrate und längster Frame der letzten halben Sekunde zur Fehlersuche
+const fpsBox = new URLSearchParams(location.search).has('fps') ? document.body.appendChild(document.createElement('div')) : null;
+if (fpsBox) fpsBox.className = 'fps';
+const fpsStat = { n: 0, t: 0, worst: 0 };
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
+  if (fpsBox) {
+    fpsStat.n++;
+    fpsStat.t += now - last;
+    fpsStat.worst = Math.max(fpsStat.worst, now - last);
+    if (fpsStat.t > 500) {
+      fpsBox.textContent = `${Math.round((1000 * fpsStat.n) / fpsStat.t)} fps · max ${Math.round(fpsStat.worst)} ms`;
+      fpsStat.n = fpsStat.t = fpsStat.worst = 0;
+    }
+  }
   last = now;
   if (game) tickGame(dt);
   else tickDemo(dt);

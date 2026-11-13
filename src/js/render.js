@@ -431,18 +431,19 @@ export class Renderer {
     const ctx = this.ctx,
       tr = p.trail;
     if (tr.length < 2) return;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
     for (let i = 1; i < tr.length; i++) {
       const a = tr[i - 1],
         b = tr[i];
-      const fade = 0.25 + 0.65 * (i / tr.length);
-      ctx.strokeStyle =
-        b.v > 0.2 ? `rgba(255,170,40,${fade})` : b.v < -1.5 ? `rgba(70,150,255,${fade * 0.8})` : `rgba(255,255,255,${fade * 0.6})`;
+      const fade = 0.3 + 0.65 * (i / tr.length);
+      ctx.strokeStyle = liftColor(b.v, fade);
       ctx.beginPath();
       ctx.moveTo(this.sx(a.x), this.sy(a.z));
       ctx.lineTo(this.sx(b.x), this.sy(b.z));
       ctx.stroke();
     }
+    ctx.lineCap = 'butt';
   }
 
   drawGhost(g, t) {
@@ -460,9 +461,12 @@ export class Renderer {
     if (p.state === 'flying') {
       // Wende als halbe Kreisbewegung darstellen
       const phase = p.circling ? p.phase : p.turning ? Math.PI / 2 + (1 - p.turnLeft / TURN_TIME) * Math.PI * p.dir : null;
+      // In der Wende dreht der Pilot von der alten (−dir) in die neue Flugrichtung.
+      const face = p.turning ? -p.dir * Math.cos(Math.PI * (1 - p.turnLeft / TURN_TIME)) : undefined;
       this.glider(this.sx(p.x), this.sy(p.z), p.color, phase, p.bar, isFocus ? null : p.name, isFocus, {
         scale: this.laneScale(p.l),
         dir: p.dir,
+        face,
       });
     } else {
       const x = this.sx(p.x),
@@ -492,42 +496,109 @@ export class Renderer {
     if (x < -40 || x > this.W + 40) return;
     const ctx = this.ctx;
     const S = (big ? 1.25 : 1) * (o.scale ?? 1);
-    const span = 26 * S;
+    const span = 28 * S;
     let wf = 1,
       tilt;
     if (phase != null) {
       wf = Math.max(0.2, Math.abs(Math.cos(phase)));
       tilt = Math.sin(phase) * 0.45;
     } else tilt = (0.08 + bar * 0.12) * (o.dir ?? 1);
+    // Blickrichtung des Piloten: Vorzeichen = Flugrichtung, Betrag = perspektivische Verkürzung
+    const face = o.face ?? (phase != null ? Math.cos(phase) : (o.dir ?? 1));
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(tilt);
     const hw = (span / 2) * wf,
-      top = -22 * S;
-    ctx.strokeStyle = 'rgba(30,35,45,0.6)';
-    ctx.lineWidth = 0.8;
+      top = -24 * S;
+    // Kappe als Bogen: Eintrittskante oben, Austrittskante unten, an den Enden dünn auslaufend
+    const N = 14;
+    const up = (u) => top + 5 * S - 14 * S * u * (1 - u);
+    const lo = (u) => top + 5 * S - 6 * S * u * (1 - u);
+    const px = (u) => -hw + 2 * hw * u;
+    // Leinen: je Seite drei Ebenen, gebündelt an den Tragegurten
+    const rx = 0,
+      ry = -4 * S;
+    ctx.strokeStyle = 'rgba(30,35,45,0.5)';
+    ctx.lineWidth = 0.6;
     ctx.beginPath();
-    ctx.moveTo(-hw, top + 4 * S);
-    ctx.lineTo(0, -3 * S);
-    ctx.moveTo(hw, top + 4 * S);
-    ctx.lineTo(0, -3 * S);
-    ctx.moveTo(-hw * 0.4, top - 1 * S);
-    ctx.lineTo(0, -3 * S);
-    ctx.moveTo(hw * 0.4, top - 1 * S);
-    ctx.lineTo(0, -3 * S);
+    for (const u of [0.04, 0.17, 0.32, 0.68, 0.83, 0.96]) {
+      ctx.moveTo(px(u), lo(u) + 0.6 * S);
+      ctx.lineTo(rx, ry);
+    }
     ctx.stroke();
-    ctx.fillStyle = color;
+    // Zellen abwechselnd in Schirmfarbe und aufgehellt
+    const light = mix(color, '#ffffff', 0.32);
+    for (let i = 0; i < N; i++) {
+      const a = i / N,
+        b = (i + 1) / N;
+      ctx.fillStyle = i % 2 ? light : color;
+      ctx.beginPath();
+      ctx.moveTo(px(a), up(a));
+      ctx.lineTo(px(b), up(b));
+      ctx.lineTo(px(b), lo(b));
+      ctx.lineTo(px(a), lo(a));
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Eintrittskante etwas dunkler, Stabilos an den Flügelenden
+    ctx.strokeStyle = mix(color, '#101820', 0.35);
+    ctx.lineWidth = 1.1 * S;
     ctx.beginPath();
-    ctx.moveTo(-hw, top + 5 * S);
-    ctx.quadraticCurveTo(0, top - 9 * S, hw, top + 5 * S);
-    ctx.quadraticCurveTo(0, top - 3 * S, -hw, top + 5 * S);
+    for (let i = 0; i <= N; i++) ctx[i ? 'lineTo' : 'moveTo'](px(i / N), up(i / N));
+    ctx.stroke();
+    ctx.fillStyle = mix(color, '#101820', 0.45);
+    for (const sd of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(sd * hw, top + 4 * S);
+      ctx.lineTo(sd * hw * 0.93, top + 8.5 * S);
+      ctx.lineTo(sd * hw * 0.86, top + 5 * S);
+      ctx.fill();
+    }
+    this.pod(rx, ry, face, color, S);
+    ctx.restore();
+    if (name) this.label(x, y - 34 * S, name, color);
+  }
+
+  // Pilot im Liegegurtzeug, seitlich: Beinsack nach vorn, Oberkörper leicht zurückgelehnt,
+  // Rückenverkleidung läuft hinten spitz aus. (rx, ry) ist der Aufhängepunkt der Tragegurte an den Schultern.
+  pod(rx, ry, face, color, S) {
+    const ctx = this.ctx;
+    const k = 0.6 * S,
+      fx = Math.sign(face || 1) * (0.35 + 0.65 * Math.abs(face)) * k;
+    ctx.save();
+    ctx.translate(rx, ry);
+    ctx.scale(fx, k);
+    ctx.translate(3.2, 4.8);
+    ctx.fillStyle = '#1b2733';
+    ctx.beginPath();
+    ctx.moveTo(6.5, -0.6);
+    ctx.quadraticCurveTo(8.2, 0.9, 6, 2);
+    ctx.quadraticCurveTo(0, 3.4, -5, 2.2);
+    ctx.quadraticCurveTo(-9.2, 1, -8.8, -0.6);
+    ctx.quadraticCurveTo(-7.5, -3.2, -5, -4.6);
+    ctx.lineTo(-3, -4.8);
+    ctx.quadraticCurveTo(-2.2, -2, -0.5, -1.6);
+    ctx.quadraticCurveTo(3, -1.6, 6.5, -0.6);
     ctx.fill();
-    ctx.fillStyle = '#18222c';
+    // Zierstreifen in Schirmfarbe
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 3.2 * S, 4 * S, 0, 0, Math.PI * 2);
+    ctx.moveTo(6.4, 0.8);
+    ctx.quadraticCurveTo(0, 2.1, -7.8, 0.2);
+    ctx.stroke();
+    // Arm zur Bremse, Kopf mit Helm
+    ctx.strokeStyle = '#1b2733';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-2.8, -4.2);
+    ctx.lineTo(-1.2, -7.4);
+    ctx.stroke();
+    ctx.fillStyle = mix(color, '#ffffff', 0.55);
+    ctx.beginPath();
+    ctx.arc(-3.9, -6.5, 1.9, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    if (name) this.label(x, y - 32 * S, name, color);
   }
 
   label(x, y, text, color) {
@@ -623,7 +694,7 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, S, S);
   const mid = S / 2,
-    range = 120,
+    range = 100,
     k = (mid - 8) / range;
 
   // Ansichtsmitte: Mittel der jüngsten Bahn, sanft nachgeführt
@@ -651,29 +722,54 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.beginPath();
   ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2);
   ctx.clip();
-  // Vorschau der aktuellen Kurve
-  if (Number.isFinite(p.R) && p.R < 200) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-    ctx.setLineDash([3, 4]);
-    ctx.beginPath();
-    ctx.arc(X(p.cx - p.drift), Y(p.cy), p.R * k, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
   // Gemessenes Steigen entlang der Flugbahn
   for (const q of pts) {
-    if (q.v > 0) {
-      ctx.fillStyle = `rgba(255,176,46,${Math.min(1, 0.3 + q.v / 3)})`;
-      ctx.beginPath();
-      ctx.arc(X(q.x), Y(q.y), 1.5 + Math.min(3, q.v), 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = 'rgba(92,182,255,0.55)';
-      ctx.beginPath();
-      ctx.arc(X(q.x), Y(q.y), 1.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const up = q.v > 0;
+    ctx.fillStyle = liftColor(q.v, up ? Math.min(1, 0.45 + q.v / 3) : 0.6);
+    ctx.beginPath();
+    ctx.arc(X(q.x), Y(q.y), up ? 1.6 + Math.min(3.2, q.v) : 1.4, 0, Math.PI * 2);
+    ctx.fill();
   }
+  // Vorschau: das nächste Drittel des aktuellen Kreises als Flugpfad, bei offenem Schieber ein gerades Stück
+  const ax = p.x - p.drift,
+    ay = p.y;
+  const path = [];
+  if (Number.isFinite(p.R) && p.R < 400) {
+    const a0 = Math.atan2(ay - p.cy, ax - p.cx);
+    // Drehsinn so wählen, dass die Tangente in Flugrichtung zeigt
+    const sg = -Math.sin(a0) * Math.cos(p.heading) + Math.cos(a0) * Math.sin(p.heading) >= 0 ? 1 : -1;
+    for (let i = 0; i <= 24; i++) {
+      const a = a0 + ((sg * (2 * Math.PI)) / 3) * (i / 24);
+      path.push([p.cx - p.drift + p.R * Math.cos(a), p.cy + p.R * Math.sin(a)]);
+    }
+  } else {
+    for (let i = 0; i <= 1; i++) path.push([ax + Math.cos(p.heading) * 60 * i, ay + Math.sin(p.heading) * 60 * i]);
+  }
+  ctx.strokeStyle = 'rgba(11,21,31,0.55)';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const trace = () => {
+    ctx.beginPath();
+    path.forEach(([qx, qy], i) => ctx[i ? 'lineTo' : 'moveTo'](X(qx), Y(qy)));
+    ctx.stroke();
+  };
+  trace();
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx.lineWidth = 2.2;
+  ctx.setLineDash([7, 5]);
+  trace();
+  ctx.setLineDash([]);
+  // Pfeilspitze am Ende des Pfads
+  const [ex, ey] = path[path.length - 1],
+    [bx, by] = path[path.length - 2];
+  const ang = Math.atan2(Y(ey) - Y(by), X(ex) - X(bx));
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath();
+  ctx.moveTo(X(ex) + Math.cos(ang) * 7, Y(ey) + Math.sin(ang) * 7);
+  ctx.lineTo(X(ex) + Math.cos(ang + 2.4) * 6, Y(ey) + Math.sin(ang + 2.4) * 6);
+  ctx.lineTo(X(ex) + Math.cos(ang - 2.4) * 6, Y(ey) + Math.sin(ang - 2.4) * 6);
+  ctx.fill();
   // Kern
   if (showCore) {
     const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y);
@@ -788,6 +884,27 @@ export function drawBarogram(cv, s, player) {
       ctx.stroke();
     }
   }
+}
+
+// Farbskala für Steigwerte (m/s): starkes Sinken blau, Nullschieber weiss, dann gelb über orange bis rot.
+const LIFT_STOPS = [
+  [-3, [60, 130, 255]],
+  [-1, [130, 190, 255]],
+  [-0.2, [232, 238, 244]],
+  [0.3, [255, 236, 130]],
+  [1, [255, 204, 60]],
+  [2, [255, 146, 32]],
+  [3, [255, 76, 40]],
+  [4.5, [220, 20, 84]],
+];
+export function liftColor(v, a = 1) {
+  let i = 1;
+  while (i < LIFT_STOPS.length - 1 && v > LIFT_STOPS[i][0]) i++;
+  const [v0, c0] = LIFT_STOPS[i - 1],
+    [v1, c1] = LIFT_STOPS[i];
+  const t = Math.max(0, Math.min(1, (v - v0) / (v1 - v0)));
+  const c = (j) => Math.round(c0[j] + (c1[j] - c0[j]) * t);
+  return `rgba(${c(0)},${c(1)},${c(2)},${a})`;
 }
 
 function hexA(hex, a) {

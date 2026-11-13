@@ -14,6 +14,7 @@
   --f-display: 'Saira Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --f-body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --r: 10px;
+  --vario-w: 236px;
   color-scheme: dark;
 }
 
@@ -132,9 +133,49 @@ kbd {
   border-left: 1px solid var(--line);
 }
 .tools {
+  position: relative;
   margin-left: auto;
   display: flex;
   gap: 6px;
+}
+.gear {
+  display: grid;
+  place-items: center;
+  padding: 5px 7px;
+}
+.gear svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  transition: transform 0.25s;
+}
+.gear[aria-expanded='true'] {
+  border-color: var(--text);
+}
+.gear[aria-expanded='true'] svg {
+  transform: rotate(60deg);
+}
+.toolmenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 132px;
+  padding: 6px;
+  border-radius: var(--r);
+  background: var(--glass-solid);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+.toolmenu .tool {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
 }
 .tool {
   font-family: var(--f-display);
@@ -153,10 +194,11 @@ kbd {
 
 .coach {
   position: absolute;
-  top: calc(70px + env(safe-area-inset-top, 0px));
+  top: calc(126px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
-  max-width: min(560px, 80vw);
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
   padding: 8px 14px;
   border-radius: var(--r);
   background: var(--glass);
@@ -171,7 +213,7 @@ kbd {
 }
 .goal {
   position: absolute;
-  top: calc(118px + env(safe-area-inset-top, 0px));
+  top: calc(174px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   font-family: var(--f-display);
@@ -187,65 +229,27 @@ kbd {
 
 .vario {
   position: absolute;
-  left: max(16px, env(safe-area-inset-left, 0px));
-  top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  width: var(--vario-w);
   display: flex;
-  gap: 10px;
-  align-items: stretch;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 6px;
   border-radius: var(--r);
   background: var(--glass);
   border: 1px solid var(--line);
 }
-.vscale {
-  position: relative;
-  width: 14px;
-  height: 150px;
-  border-radius: 7px;
-  background: linear-gradient(var(--lift) 0%, rgba(255, 176, 46, 0.15) 48%, rgba(92, 182, 255, 0.15) 52%, var(--sink) 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.vscale span {
-  position: absolute;
-  left: 20px;
-  font-family: var(--f-display);
-  font-size: 10px;
-  color: var(--muted);
-}
-.vscale span:nth-of-type(1) {
-  top: -4px;
-}
-.vscale span:nth-of-type(2) {
-  top: 68px;
-}
-.vscale span:nth-of-type(3) {
-  bottom: -4px;
-}
-.vneedle {
-  position: absolute;
-  left: -4px;
-  right: -4px;
-  height: 3px;
-  top: 50%;
-  background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
-  transition: top 0.1s linear;
-}
 .vread {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding-left: 18px;
-  min-width: 86px;
+  align-items: baseline;
+  gap: 4px;
 }
 .vread b {
   font-family: var(--f-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: 38px;
   line-height: 1;
 }
 .vread b.small {
@@ -256,13 +260,56 @@ kbd {
   font-family: var(--f-display);
   font-size: 12px;
   color: var(--muted);
-  margin-bottom: 10px;
+}
+.vavg {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 .vread b.up {
   color: var(--lift);
 }
 .vread b.down {
   color: var(--sink);
+}
+/* Gleiche Farbskala wie die Spur: blau, weiss, gelb, orange, rot */
+.vscale {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(
+    90deg,
+    rgb(60, 130, 255) 0%,
+    rgb(130, 190, 255) 40%,
+    rgba(232, 238, 244, 0.5) 48%,
+    rgb(255, 236, 130) 53%,
+    rgb(255, 204, 60) 60%,
+    rgb(255, 146, 32) 70%,
+    rgb(255, 76, 40) 80%,
+    rgb(220, 20, 84) 100%
+  );
+}
+.vneedle {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 50%;
+  width: 4px;
+  margin-left: -2px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(11, 21, 31, 0.6),
+    0 0 6px rgba(255, 255, 255, 0.8);
+  transition: left 0.1s linear;
+}
+.vticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--f-display);
+  font-size: 10px;
+  color: var(--muted);
 }
 
 .speedbar {
@@ -327,9 +374,9 @@ kbd {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 184px);
-  width: 156px;
-  height: 156px;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  width: min(250px, 44vh);
+  height: min(250px, 44vh);
   border-radius: 50%;
   background: var(--glass);
   border: 1px solid var(--line);
@@ -435,26 +482,40 @@ kbd {
 .groundpanel {
   position: absolute;
   left: 50%;
-  bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  width: min(440px, calc(100vw - 32px));
-  padding: 16px 18px;
+  width: min(780px, calc(100vw - 32px));
+  padding: 12px 16px;
   border-radius: 14px;
   background: var(--glass);
   border: 1px solid var(--line);
-  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  pointer-events: auto;
+}
+.bottombar .clock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  align-items: center;
+}
+.ginfo {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  pointer-events: auto;
+  gap: 6px;
 }
 .gtitle {
   font-family: var(--f-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: 19px;
+  line-height: 1.1;
 }
 .gtext {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.45;
 }
@@ -479,14 +540,35 @@ kbd {
 .gbtns {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 50%;
+}
+/* Fluginstrumente erst nach dem Start; am Boden steht die Uhrzeit oben an Stelle des Varios */
+#hud:not(.aloft) .flight,
+#hud.aloft .ground {
+  display: none;
+}
+.gclock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: var(--r);
+  background: var(--glass);
+  border: 1px solid var(--line);
+}
+.gclock b {
+  font-size: 28px;
 }
 
 .touchhint {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(150px + env(safe-area-inset-bottom, 0px));
   display: flex;
   justify-content: space-around;
   font-family: var(--f-display);
@@ -1017,6 +1099,20 @@ input[type='range'] {
   transform: translateX(-50%) translateY(0);
 }
 
+.fps {
+  position: fixed;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  z-index: 50;
+  font: 600 11px var(--f-display);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
 /* ---------- Kleine Bildschirme (Handy quer) ---------- */
 @media (max-width: 760px), (max-height: 480px) {
   .topbar {
@@ -1024,6 +1120,9 @@ input[type='range'] {
   }
   .readout b {
     font-size: 16px;
+  }
+  .gclock b {
+    font-size: 22px;
   }
   .topbar .main b {
     font-size: 21px;
@@ -1035,14 +1134,13 @@ input[type='range'] {
     padding: 4px 7px;
     font-size: 11px;
   }
-  .vscale {
-    height: 100px;
-  }
-  .vscale span:nth-of-type(2) {
-    top: 44px;
+  .vario {
+    top: calc(6px + env(safe-area-inset-top, 0px));
+    padding: 6px 10px 4px;
+    gap: 4px;
   }
   .vread b {
-    font-size: 30px;
+    font-size: 28px;
   }
   .track {
     height: 90px;
@@ -1050,14 +1148,22 @@ input[type='range'] {
   .maneuver {
     right: calc(max(16px, env(safe-area-inset-right, 0px)) + 66px);
   }
-  .assist {
-    width: 112px;
-    height: 112px;
-    left: calc(max(16px, env(safe-area-inset-left, 0px)) + 150px);
+  :root {
+    --vario-w: 184px;
   }
+  .assist {
+    top: calc(50% + 10px);
+    width: min(170px, 40vh);
+    height: min(170px, 40vh);
+  }
+  /* Beim Zentrieren hat der Schieber Vorrang vor der unteren Anzeige */
   .steer {
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px));
     padding: 6px 10px;
+    width: min(420px, calc(100vw - 2 * max(16px, env(safe-area-inset-left, 0px)) - 2 * min(170px, 40vh) - 24px));
+  }
+  #hud.steering .bottombar {
+    visibility: hidden;
   }
   .maneuver .tool {
     font-size: 11px;
@@ -1068,15 +1174,25 @@ input[type='range'] {
     padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
   }
   .coach {
-    top: calc(52px + env(safe-area-inset-top, 0px));
+    top: calc(104px + env(safe-area-inset-top, 0px));
     font-size: 13px;
   }
   .goal {
-    top: calc(92px + env(safe-area-inset-top, 0px));
+    top: calc(142px + env(safe-area-inset-top, 0px));
+  }
+  .bottombar .clock {
+    bottom: calc(44px + env(safe-area-inset-bottom, 0px));
   }
   .groundpanel {
-    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-    padding: 12px 14px;
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 12px;
+    gap: 12px;
+  }
+  .gtext {
+    font-size: 12px;
+  }
+  .gbtns .btn {
+    padding: 6px 10px;
   }
   .modes,
   .howto-grid,
@@ -1090,15 +1206,11 @@ input[type='range'] {
     font-size: 26px;
   }
 }
-@media (max-width: 420px) {
-  .tools .tool:nth-child(-n + 2) {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .coach,
   .toast,
   .vneedle,
+  .gear svg,
   .stf,
   #gMeterFill {
     transition: none;

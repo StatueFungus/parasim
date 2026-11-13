@@ -18,33 +18,44 @@
   <div id="hud" hidden>
     <div class="topbar">
       <div class="readout"><span class="lbl">Restzeit</span><b id="hRemain">2:00:00</b></div>
-      <div class="readout"><span class="lbl">Uhrzeit</span><b id="hClock">11:30</b></div>
       <div class="readout main"><span class="lbl">Strecke</span><b id="hDist">0.0 km</b><span id="hRank" class="sub"></span></div>
       <div class="readout hide-sm"><span class="lbl">Wind</span><b id="hWind">0</b></div>
       <div class="readout hide-sm"><span class="lbl">Basis</span><b id="hBase">–</b></div>
       <div class="tools">
-        <button id="bThermals" class="tool" title="Thermik anzeigen (T)" aria-pressed="false">Thermik</button>
-        <button id="bCoach" class="tool" title="Fluglehrer-Tipps (C)" aria-pressed="true">Tipps</button>
-        <button id="bSound" class="tool" title="Vario-Ton (S)" aria-pressed="true">Ton</button>
-        <button id="bZoom" class="tool" title="Zoom (Z)">Zoom</button>
-        <button id="bPause" class="tool" title="Pause (P)">II</button>
+        <button id="bPause" class="tool" title="Pause (P)" aria-label="Pause">II</button>
+        <button id="bMenu" class="tool gear" title="Optionen" aria-label="Optionen" aria-expanded="false" aria-controls="toolMenu">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.7c.1.6.1 1.2 0 1.8l2 1.7-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.7a5 5 0 0 1 0-1.8l-2-1.7 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9z M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </button>
+        <div id="toolMenu" class="toolmenu" hidden>
+          <button id="bThermals" class="tool" title="Thermik anzeigen (T)" aria-pressed="false">Thermik <kbd>T</kbd></button>
+          <button id="bCoach" class="tool" title="Fluglehrer-Tipps (C)" aria-pressed="true">Tipps <kbd>C</kbd></button>
+          <button id="bSound" class="tool" title="Vario-Ton (S)" aria-pressed="true">Ton <kbd>S</kbd></button>
+          <button id="bZoom" class="tool" title="Zoom (Z)">Zoom <kbd>Z</kbd></button>
+        </div>
       </div>
     </div>
 
     <div id="goal" class="goal" hidden></div>
     <div id="coach" class="coach" aria-live="polite"></div>
 
-    <div class="vario" aria-label="Variometer">
+    <div class="readout gclock ground"><span class="lbl">Uhrzeit</span><b id="hClockGround">11:30</b></div>
+    <div class="vario flight" aria-label="Variometer">
+      <div class="vread">
+        <b id="hVario">0.0</b><span class="unit">m/s</span>
+        <span class="vavg"><span class="lbl">Ø Kreis</span><b id="hAvg" class="small">–</b></span>
+      </div>
       <div class="vscale">
         <div id="vNeedle" class="vneedle"></div>
-        <span>+5</span><span>0</span><span>−5</span>
       </div>
-      <div class="vread">
-        <b id="hVario">0.0</b><span class="unit">m/s</span> <span class="lbl">Ø Kreis</span><b id="hAvg" class="small">–</b>
-      </div>
+      <div class="vticks"><span>−5</span><span>0</span><span>+5</span></div>
     </div>
 
-    <div class="speedbar" aria-label="Beschleuniger">
+    <div class="speedbar flight" aria-label="Beschleuniger">
       <span class="lbl">Beschl.</span>
       <div class="track" id="barTrack">
         <div id="barFill" class="fill"></div>
@@ -60,12 +71,13 @@
       <div class="steer-lbl"><span>← enger links</span><b id="steerTxt">Links · 40 m</b><span>enger rechts →</span></div>
     </div>
 
-    <div class="maneuver">
+    <div class="maneuver flight">
       <button id="bTurn" class="tool" title="Wenden (← zurück, → auf Kurs)">Wenden <kbd>←</kbd></button>
       <button id="bLane" class="tool" title="Linie wechseln (Q Hangkante, E Talmitte)" hidden>Ins Tal <kbd>E</kbd></button>
     </div>
 
-    <div class="bottombar">
+    <div class="bottombar flight">
+      <div class="readout clock"><span class="lbl">Uhrzeit</span><b id="hClock">11:30</b></div>
       <div class="readout"><span class="lbl">Über Grund</span><b id="hAgl">0 m</b></div>
       <div class="readout" id="rowRidge" hidden>
         <span class="lbl">Linie</span><b id="hLane">Hangkante</b><span class="sub"><span id="hRidge">0 m</span> über Grat</span>
@@ -78,11 +90,13 @@
     <canvas id="mini" aria-label="Übersicht"></canvas>
 
     <div id="ground" class="groundpanel" hidden>
-      <div id="gTitle" class="gtitle">Startplatz</div>
-      <div id="gText" class="gtext"></div>
-      <div id="gMeter" class="meter">
-        <span class="lbl">Thermikentwicklung</span>
-        <div class="mtrack"><div id="gMeterFill"></div></div>
+      <div class="ginfo">
+        <div id="gTitle" class="gtitle">Startplatz</div>
+        <div id="gText" class="gtext"></div>
+        <div id="gMeter" class="meter">
+          <span class="lbl">Thermikentwicklung</span>
+          <div class="mtrack"><div id="gMeterFill"></div></div>
+        </div>
       </div>
       <div class="gbtns">
         <button id="gStart" class="btn primary">Starten <kbd>Enter</kbd></button>

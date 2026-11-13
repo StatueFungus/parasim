@@ -40,7 +40,7 @@ export const LESSONS = [
     goal: 'Steige in 9 Minuten auf 1050 m über Grund. Mit fester Kurve reicht die Zeit nicht.',
     intro: [
       'Jetzt steuerst du die Kurve selbst. Leertaste halten startet eine moderate Linkskurve. Mit ← und → verschiebst du den Kurvenschieber: enger, weiter, geradeaus oder sogar in die andere Richtung. Am Handy ziehst du dafür den Kreis-Daumen nach links oder rechts.',
-      'Kreist du neben dem Kern, steigt es auf einer Seite mehr. Der Thermik-Assistent zeigt deine Bahn von oben, orange heisst Steigen, das Kreuz markiert den Kern.',
+      'Kreist du neben dem Kern, steigt es auf einer Seite mehr. Der Thermik-Assistent zeigt deine Bahn von oben, gelb bis rot heisst Steigen, das Kreuz markiert den Kern.',
       'Die Technik: Wird das Steigen stärker, mach die Kurve auf (Schieber Richtung Mitte). So fliegst du ein Stück Richtung Kern. Wird es wieder schwächer, dreh enger ein. Lässt du die Leertaste los, fliegst du in die Richtung weiter, in die du gerade schaust.',
     ],
     setup: {
