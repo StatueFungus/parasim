@@ -12,7 +12,7 @@ COPY src ./src
 RUN node scripts/build.mjs
 
 # ---- Laufzeit: nginx ohne root, Port 8080 ----
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine-slim
 ARG APP_VERSION=""
 ARG GIT_SHA="unknown"
 LABEL org.opencontainers.image.title="ParaSim" \
