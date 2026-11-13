@@ -1,0 +1,7 @@
+dist/
+node_modules/
+package-lock.json
+CHANGELOG.md
+LICENSE
+# Helm-Templates sind Go-Templates, kein reines YAML
+charts/parasim/templates/

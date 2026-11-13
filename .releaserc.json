@@ -1,0 +1,48 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      { "preset": "conventionalcommits", "releaseRules": [{ "type": "build", "scope": "deps", "release": "patch" }] }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            { "type": "feat", "section": "Neue Funktionen" },
+            { "type": "fix", "section": "Fehlerbehebungen" },
+            { "type": "perf", "section": "Performance" },
+            { "type": "revert", "section": "Zurückgenommen" },
+            { "type": "docs", "section": "Dokumentation" },
+            { "type": "build", "section": "Build und Abhängigkeiten" },
+            { "type": "refactor", "hidden": true },
+            { "type": "test", "hidden": true },
+            { "type": "style", "hidden": true },
+            { "type": "ci", "hidden": true },
+            { "type": "chore", "hidden": true }
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog\n\nWird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt."
+      }
+    ],
+    ["@semantic-release/npm", { "npmPublish": false }],
+    ["@semantic-release/exec", { "prepareCmd": "node scripts/set-chart-version.mjs ${nextRelease.version}" }],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "package.json", "package-lock.json", "charts/parasim/Chart.yaml"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    ["@semantic-release/github", { "successComment": false, "failComment": false, "releasedLabels": false }]
+  ]
+}

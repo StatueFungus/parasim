@@ -1,20 +1,42 @@
 version: 2
 updates:
+  # Actions: ci(deps) → kein Release
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope
     groups:
       actions:
-        patterns: ["*"]
+        patterns: ['*']
+
+  # Entwicklungswerkzeuge: build(deps-dev) → kein Release
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
     groups:
       dev-dependencies:
         dependency-type: development
+
+  # Basis-Images landen im ausgelieferten Container: build(deps) → Patch-Release
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # Node nur auf LTS-Versionen (gerade Majors) – Majors manuell anheben
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+      # nginx auf der stabilen Linie (gerade Minor) bleiben
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types: ['version-update:semver-minor']

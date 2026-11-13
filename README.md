@@ -20,16 +20,17 @@ npm ci          # nur Entwicklungswerkzeuge (ESLint); die App selbst hat keine A
 npm start       # http://localhost:8000
 ```
 
-| Befehl | Zweck |
-|---|---|
-| `npm start` | Lokaler Entwicklungsserver (Port über `PORT`) |
-| `npm test` | Tests der Simulation (`node:test`) |
-| `npm run lint` | ESLint |
-| `npm run build` | Auslieferbares `dist/` erzeugen |
+| Befehl                                    | Zweck                                               |
+| ----------------------------------------- | --------------------------------------------------- |
+| `npm start`                               | Lokaler Entwicklungsserver (Port über `PORT`)       |
+| `npm test`                                | Tests der Simulation (`node:test`)                  |
+| `npm run lint`                            | ESLint und Prettier                                 |
+| `npm run format`                          | Code mit Prettier formatieren                       |
+| `npm run build`                           | Auslieferbares `dist/` erzeugen                     |
 | `npm run balance -- flat EN-B 10 cumulus` | Bots über 8 Tage fliegen lassen, Distanzen ausgeben |
-| `npm run check` | Lint, Tests und Build in einem |
+| `npm run check`                           | Lint, Tests und Build in einem                      |
 
-Voraussetzung: Node.js 22 oder neuer (siehe `.nvmrc`).
+Voraussetzung: Node.js 22 oder neuer, empfohlen 24 LTS (siehe `.nvmrc`).
 
 ## Container
 
@@ -59,45 +60,57 @@ helm install parasim charts/parasim --namespace parasim --create-namespace \
 
 Wichtige Werte (vollständig in [`charts/parasim/values.yaml`](charts/parasim/values.yaml)):
 
-| Wert | Standard | Bedeutung |
-|---|---|---|
-| `replicaCount` | `2` | Anzahl Pods (ohne Autoscaling) |
-| `image.repository` / `image.tag` | GHCR / `appVersion` | Container-Image |
-| `imagePullSecrets` | `[]` | Nötig, solange Image und Repository privat sind |
-| `ingress.enabled`, `ingress.hosts`, `ingress.tls` | aus | Externer Zugriff |
-| `autoscaling.enabled` | aus | HorizontalPodAutoscaler nach CPU |
-| `podDisruptionBudget.enabled` | an | Mindestens ein Pod bleibt bei Wartung erreichbar |
-| `networkPolicy.enabled` | aus | Nur Port 8080 eingehend, nichts ausgehend |
+| Wert                                              | Standard            | Bedeutung                                        |
+| ------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| `replicaCount`                                    | `2`                 | Anzahl Pods (ohne Autoscaling)                   |
+| `image.repository` / `image.tag`                  | GHCR / `appVersion` | Container-Image                                  |
+| `imagePullSecrets`                                | `[]`                | Nötig, solange Image und Repository privat sind  |
+| `ingress.enabled`, `ingress.hosts`, `ingress.tls` | aus                 | Externer Zugriff                                 |
+| `autoscaling.enabled`                             | aus                 | HorizontalPodAutoscaler nach CPU                 |
+| `podDisruptionBudget.enabled`                     | an                  | Mindestens ein Pod bleibt bei Wartung erreichbar |
+| `networkPolicy.enabled`                           | aus                 | Nur Port 8080 eingehend, nichts ausgehend        |
 
 Der Pod läuft ohne root, mit schreibgeschütztem Dateisystem, ohne Linux-Capabilities und mit `RuntimeDefault`-Seccomp. `helm test parasim` prüft die Erreichbarkeit.
 
-## CI/CD
+## CI/CD und Versionierung
 
-| Workflow | Auslöser | Was passiert |
-|---|---|---|
-| [CI](.github/workflows/ci.yml) | Push auf `main`, Pull Requests | Lint, Tests, Build, Bot-Balance als Zusammenfassung; Helm-Lint und Schema-Prüfung (kubeconform); Dockerfile-Lint (hadolint), Image-Build, Smoke-Test des Containers, Sicherheitsscan (Trivy) |
-| [Release](.github/workflows/release.yml) | Tag `v*.*.*` | Tests; Multi-Arch-Image nach GHCR (`<version>`, `<major>.<minor>`, `latest`); Helm-Chart als OCI-Paket nach GHCR; GitHub-Release mit Chart und Installationshinweisen |
-| [Deploy](.github/workflows/deploy.yml) | Veröffentlichtes Release oder manuell | `helm upgrade --install` mit `deploy/helm/values-production.yaml` und `helm test` |
+Versionen folgen [Semantic Versioning](https://semver.org/lang/de/) und entstehen automatisch aus den Commit-Nachrichten ([Conventional Commits](https://www.conventionalcommits.org/de/)):
 
-### Release erstellen
+| Commit                                                                       | Beispiel                                   | Neue Version      |
+| ---------------------------------------------------------------------------- | ------------------------------------------ | ----------------- |
+| `feat:`                                                                      | `feat: Thermik-Assistent zeigt Kernstärke` | Minor (0.**2**.0) |
+| `fix:`, `perf:`                                                              | `fix: Vögel springen nicht mehr`           | Patch (0.1.**1**) |
+| `build(deps):`                                                               | Dependabot-Update des Basis-Images         | Patch             |
+| `feat!:` oder `BREAKING CHANGE:` im Text                                     |                                            | Major (**1**.0.0) |
+| `docs:`, `style:`, `refactor:`, `test:`, `ci:`, `chore:`, `build(deps-dev):` |                                            | keine             |
 
-1. `CHANGELOG.md` ergänzen, `version` in `package.json` anheben.
-2. Commit, dann Tag setzen und pushen:
-   ```sh
-   git tag v0.2.0 && git push origin v0.2.0
-   ```
+Die Pipeline ([`ci.yml`](.github/workflows/ci.yml)) läuft bei jedem Pull Request und jedem Push auf `main`:
 
-Chart- und App-Version werden aus dem Tag gesetzt.
+| Stufe                                       | Inhalt                                                                                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Lint**                                    | ESLint, Prettier, commitlint (Commit-Nachrichten), actionlint (Workflows)                                                                        |
+| **Tests und Build**                         | `node:test`, Build von `dist/`, Bot-Balance als Zusammenfassung                                                                                  |
+| **Helm-Chart**                              | `helm lint --strict`, Schema-Prüfung mit kubeconform                                                                                             |
+| **Container-Image**                         | hadolint, Build, Smoke-Test mit schreibgeschütztem Dateisystem, Trivy-Scan                                                                       |
+| **Release** _(nur `main`)_                  | semantic-release: nächste Version, `CHANGELOG.md`, Version in `package.json` und `Chart.yaml`, Tag, GitHub-Release                               |
+| **Veröffentlichen** _(bei neuer Version)_   | Multi-Arch-Image (`<version>`, `<major>.<minor>`, `latest`) mit SBOM und Provenance nach GHCR; Helm-Chart als OCI-Paket nach GHCR und am Release |
+| **Rollout** _(bei neuer Version, optional)_ | [`deploy.yml`](.github/workflows/deploy.yml): `helm upgrade --install` und `helm test`                                                           |
+
+Zusätzlich prüft [`pr-title.yml`](.github/workflows/pr-title.yml) den Titel von Pull Requests, denn beim Squash-Merge wird er zur Commit-Nachricht auf `main`.
+
+Lokal prüfen Git-Hooks (husky) vor jedem Commit die geänderten Dateien (ESLint, Prettier) und die Commit-Nachricht (commitlint). Sie werden mit `npm ci` eingerichtet.
 
 ### Deploy einrichten
 
-Der Deploy-Workflow ist inaktiv, bis er konfiguriert ist:
+Der Rollout ist inaktiv, bis er konfiguriert ist:
 
 1. Environment `production` anlegen (Settings → Environments) und darin das Secret `KUBECONFIG` hinterlegen: Inhalt einer kubeconfig, base64-kodiert.
 2. Repository-Variable `DEPLOY_ENABLED` auf `true` setzen.
 3. Im Ziel-Namespace ein Pull-Secret `ghcr-pull` anlegen (siehe Kommentar in `deploy/helm/values-production.yaml`) und dort Hostname und Ingress-Klasse anpassen.
 
-Dependabot hält Actions, npm-Pakete und Basis-Images aktuell.
+Ein bestimmtes Release lässt sich jederzeit von Hand ausrollen, auch als Rollback: _Actions → Deploy → Run workflow_ mit der gewünschten Version.
+
+Dependabot hält Actions, npm-Pakete und Basis-Images aktuell; Updates der Basis-Images lösen ein Patch-Release aus.
 
 ## Mitmachen
 

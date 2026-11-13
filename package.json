@@ -12,13 +12,27 @@
     "start": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test \"tests/**/*.test.mjs\"",
-    "lint": "eslint .",
+    "lint": "eslint . && prettier --check .",
     "balance": "node scripts/balance.mjs",
-    "check": "npm run lint && npm test && npm run build"
+    "check": "npm run lint && npm test && npm run build",
+    "format": "prettier --write .",
+    "lint:commits": "commitlint --from origin/main --to HEAD --verbose",
+    "release": "semantic-release",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.1",
-    "eslint": "9.39.1",
-    "globals": "16.5.0"
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@eslint/js": "10.0.1",
+    "@semantic-release/changelog": "7.0.0",
+    "@semantic-release/exec": "7.1.0",
+    "@semantic-release/git": "11.0.1",
+    "conventional-changelog-conventionalcommits": "10.4.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
+    "semantic-release": "25.0.9"
   }
 }

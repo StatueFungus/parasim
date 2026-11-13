@@ -12,7 +12,11 @@ for (let seed = 1; seed <= 8; seed++) {
   while (!s.ended) s.step(60);
   for (const p of s.pilots) {
     (res[p.name + ' ' + p.tag] ??= []).push((p.best / 1000).toFixed(1) + (p.flights.length > 1 ? '*' + p.flights.length : ''));
-    for (const f of p.flights) { turns += f.turns; laneT[0] += f.laneT[0]; laneT[1] += f.laneT[1]; }
+    for (const f of p.flights) {
+      turns += f.turns;
+      laneT[0] += f.laneT[0];
+      laneT[1] += f.laneT[1];
+    }
   }
 }
 for (const [k, v] of Object.entries(res)) console.log(k.padEnd(22), v.join('  '));

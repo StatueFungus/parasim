@@ -1,4 +1,7 @@
-name: CI
+# CI/CD: Pull Requests werden geprüft. Jeder Push auf main wird geprüft und – wenn die Commits es verlangen –
+# von semantic-release als neue Version veröffentlicht: Tag, GitHub-Release, Container-Image und Helm-Chart in GHCR,
+# optional Rollout in den Cluster.
+name: CI/CD
 
 on:
   push:
@@ -11,20 +14,49 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # main nie abbrechen, sonst könnte ein Release halb fertig bleiben
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
-    name: Lint, Tests, Build
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      - name: ESLint und Prettier
+        run: npm run lint
+      - name: Commit-Nachrichten (Conventional Commits)
+        env:
+          FROM: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          TO: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$FROM" ] || [ "$FROM" = "0000000000000000000000000000000000000000" ]; then
+            npx commitlint --last --verbose
+          else
+            npx commitlint --from "$FROM" --to "$TO" --verbose
+          fi
+      - name: Workflows (actionlint)
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+  test:
+    name: Tests und Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
       - run: npm test
       - run: npm run build
       - name: Bot-Balance als Zusammenfassung
@@ -35,43 +67,42 @@ jobs:
             node scripts/balance.mjs flat EN-B 0
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist
           retention-days: 7
 
   helm:
-    name: Helm-Chart prüfen
+    name: Helm-Chart
     runs-on: ubuntu-latest
     env:
       KUBECONFORM_VERSION: v0.6.7
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       - name: helm lint
         run: |
           helm lint --strict charts/parasim
+          helm lint --strict charts/parasim -f deploy/helm/values-production.yaml
           helm lint --strict charts/parasim --set ingress.enabled=true,autoscaling.enabled=true,networkPolicy.enabled=true
       - name: Manifeste gegen Kubernetes-Schemas prüfen
         run: |
           curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" | tar xz kubeconform
-          for set in "" "ingress.enabled=true,autoscaling.enabled=true,networkPolicy.enabled=true"; do
-            helm template parasim charts/parasim ${set:+--set $set} \
-              | ./kubeconform -strict -summary -kubernetes-version 1.30.0 -
-          done
+          helm template parasim charts/parasim | ./kubeconform -strict -summary -kubernetes-version 1.30.0 -
+          helm template parasim charts/parasim -f deploy/helm/values-production.yaml --set networkPolicy.enabled=true \
+            | ./kubeconform -strict -summary -kubernetes-version 1.30.0 -
 
   docker:
-    name: Image bauen, testen, scannen
-    needs: test
+    name: Container-Image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: actions/checkout@v7
+      - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -94,4 +125,133 @@ jobs:
           image-ref: parasim:ci
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: '1'
+
+  release:
+    name: Release (semantic-release)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, test, helm, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      published: ${{ steps.semrel.outputs.published }}
+      version: ${{ steps.semrel.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: semrel
+        name: Version bestimmen, CHANGELOG, Tag und GitHub-Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          before="$(git tag --list 'v*' --sort=-v:refname | head -1)"
+          npx semantic-release
+          after="$(git tag --list 'v*' --sort=-v:refname | head -1)"
+          if [ -n "$after" ] && [ "$after" != "$before" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "version=${after#v}" >> "$GITHUB_OUTPUT"
+            echo "### Release ${after}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "Kein Release: keine Commits vom Typ feat, fix, perf oder build(deps) seit ${before:-Beginn}." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  publish:
+    name: Image und Chart veröffentlichen
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.release.outputs.version }}
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}},value=v${{ needs.release.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=v${{ needs.release.outputs.version }}
+            type=raw,value=latest
+            type=sha,format=short
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ needs.release.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - uses: azure/setup-helm@v5
+      - name: Helm-Chart packen und nach GHCR pushen
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          helm package charts/parasim --version "$VERSION" --app-version "$VERSION" --destination .
+          echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GH_ACTOR" --password-stdin
+          helm push "parasim-${VERSION}.tgz" "oci://ghcr.io/${OWNER}/charts"
+      - name: Chart und Installationshinweise ans GitHub-Release hängen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          REPO="${GITHUB_REPOSITORY,,}"
+          gh release upload "v${VERSION}" "parasim-${VERSION}.tgz" --clobber
+          gh release view "v${VERSION}" --json body --jq .body > notes.md
+          cat >> notes.md <<NOTES
+
+          ## Installation
+
+          \`\`\`sh
+          docker run -p 8080:8080 ghcr.io/${REPO}:${VERSION}
+          helm install parasim oci://ghcr.io/${OWNER}/charts/parasim --version ${VERSION}
+          \`\`\`
+
+          Image-Digest: \`${DIGEST}\`
+          NOTES
+          gh release edit "v${VERSION}" --notes-file notes.md
+
+  deploy:
+    name: Rollout
+    needs: [release, publish]
+    if: needs.release.outputs.published == 'true'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      version: ${{ needs.release.outputs.version }}
+    secrets: inherit

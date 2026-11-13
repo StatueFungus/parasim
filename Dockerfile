@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build: erzeugt dist/ (keine npm-Abhängigkeiten nötig) ----
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 ARG APP_VERSION=""
 ARG GIT_SHA="unknown"

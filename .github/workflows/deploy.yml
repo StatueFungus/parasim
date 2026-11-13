@@ -1,18 +1,24 @@
-# Rollout in einen Kubernetes-Cluster. Inaktiv, bis die Repository-Variable DEPLOY_ENABLED=true gesetzt
-# und im Environment «production» das Secret KUBECONFIG (Inhalt einer kubeconfig, base64-kodiert) hinterlegt ist.
+# Rollout in einen Kubernetes-Cluster: automatisch nach jedem Release (aus CI/CD aufgerufen) oder manuell,
+# z. B. für ein Rollback. Inaktiv, bis die Repository-Variable DEPLOY_ENABLED=true gesetzt und im Environment
+# «production» das Secret KUBECONFIG (Inhalt einer kubeconfig, base64-kodiert) hinterlegt ist.
 name: Deploy
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       version:
-        description: "Version ohne v, z. B. 0.2.0"
+        description: 'Version ohne v, z. B. 0.2.0'
+        type: string
         required: true
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: deploy-production
@@ -20,12 +26,15 @@ concurrency:
 
 jobs:
   deploy:
+    name: helm upgrade (production)
     if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+      - uses: azure/setup-helm@v5
       - name: Kubeconfig einrichten
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
@@ -37,10 +46,8 @@ jobs:
         env:
           GH_ACTOR: ${{ github.actor }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          INPUT_VERSION: ${{ inputs.version }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${INPUT_VERSION:-${RELEASE_TAG#v}}"
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GH_ACTOR" --password-stdin
           helm upgrade --install parasim "oci://ghcr.io/${OWNER}/charts/parasim" \

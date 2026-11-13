@@ -1,10 +1,8 @@
 # Changelog
 
-Alle nennenswerten Änderungen. Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
+Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
-## [Unveröffentlicht]
-
-## [0.1.0]
+## 0.1.0 (2026-11-13)
 
 Erste Version.
 

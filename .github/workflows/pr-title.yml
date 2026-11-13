@@ -1,0 +1,33 @@
+# Beim Squash-Merge wird der PR-Titel zur Commit-Nachricht auf main – er muss deshalb Conventional Commits folgen.
+name: PR-Titel
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    name: Conventional-Commit-Titel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            revert
+            docs
+            style
+            refactor
+            test
+            build
+            ci
+            chore
+          requireScope: false
+          subjectPattern: ^.+$

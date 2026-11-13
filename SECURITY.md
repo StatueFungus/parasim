@@ -6,7 +6,7 @@ Sicherheitskorrekturen gibt es für die jeweils neueste veröffentlichte Version
 
 ## Lücke melden
 
-Bitte **kein** öffentliches Issue anlegen. Stattdessen über *Security → Report a vulnerability* in diesem Repository melden (private Sicherheitsmeldung von GitHub). Wir melden uns innerhalb von 7 Tagen.
+Bitte **kein** öffentliches Issue anlegen. Stattdessen über _Security → Report a vulnerability_ in diesem Repository melden (private Sicherheitsmeldung von GitHub). Wir melden uns innerhalb von 7 Tagen.
 
 ## Maßnahmen
 

@@ -36,11 +36,11 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesaufgabe):
 
-| Stufe | Kurve | Thermik-Assistent |
-|---|---|---|
-| Automatisch | feste Kurve, die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | – |
-| Assistiert | Kurvenschieber | Draufsicht mit Kern-Markierung |
-| Profi | Kurvenschieber | Draufsicht ohne Kern, nur das gemessene Steigen |
+| Stufe       | Kurve                                                                                   | Thermik-Assistent                               |
+| ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Automatisch | feste Kurve, die Automatik zieht den Kreis bis etwa einen halben Bartradius an den Kern | –                                               |
+| Assistiert  | Kurvenschieber                                                                          | Draufsicht mit Kern-Markierung                  |
+| Profi       | Kurvenschieber                                                                          | Draufsicht ohne Kern, nur das gemessene Steigen |
 
 - **Leertaste halten** startet eine moderate Kurve (≈ 40 m Radius) in der zuletzt geflogenen Drehrichtung.
 - **Kurvenschieber** mit ← / → (am Handy: den Kreis-Daumen waagrecht ziehen): stufenlos von enger Linkskurve über geradeaus bis zur engen Rechtskurve. Der Radius ist `25 m / |Schieber|`; enge Kurven kosten mehr Sinken.
@@ -53,18 +53,18 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 
 ## Steuerung
 
-| Taste | Funktion |
-|---|---|
-| Leertaste halten | Kreisen |
-| ↑ / ↓ | Beschleuniger |
-| ← / → | Wenden: zurück / wieder auf Kurs; im Kreis beim selbst Zentrieren: Kurvenschieber |
-| Q / E | Gebirge: Hangkante / Talmitte |
-| Enter | Starten / Hochlaufen |
-| M | MacCready-Wert (0–3) |
-| T / C / S / Z | Thermik, Tipps, Ton, Zoom |
-| X | Zeitraffer am Boden |
-| F | Kamera folgt dem Führenden |
-| R | Neustart (nur Training) |
-| P / Esc | Pause |
+| Taste            | Funktion                                                                          |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Leertaste halten | Kreisen                                                                           |
+| ↑ / ↓            | Beschleuniger                                                                     |
+| ← / →            | Wenden: zurück / wieder auf Kurs; im Kreis beim selbst Zentrieren: Kurvenschieber |
+| Q / E            | Gebirge: Hangkante / Talmitte                                                     |
+| Enter            | Starten / Hochlaufen                                                              |
+| M                | MacCready-Wert (0–3)                                                              |
+| T / C / S / Z    | Thermik, Tipps, Ton, Zoom                                                         |
+| X                | Zeitraffer am Boden                                                               |
+| F                | Kamera folgt dem Führenden                                                        |
+| R                | Neustart (nur Training)                                                           |
+| P / Esc          | Pause                                                                             |
 
 Touch: linke Hälfte halten = kreisen, rechts senkrecht wischen = Beschleuniger, beim selbst Zentrieren den Kreis-Daumen waagrecht ziehen = Kurvenschieber.

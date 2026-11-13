@@ -14,12 +14,16 @@ function circleIn(w, centering, steerFn, seconds = 300) {
   const p = new Pilot({ id: 'p', glider: 'EN-B', centering });
   const t0 = 2400;
   p.launch(w, t0);
-  p.x = 930; p.z = w.ground(930) + 500;
+  p.x = 930;
+  p.z = w.ground(930) + 500;
   const z0 = p.z;
   p.wantCircle = true;
   let prev = 0;
   for (let t = t0; t < t0 + seconds; t += 0.2) {
-    if (steerFn && p.circling) { steerFn(p, prev); prev = p.air; }
+    if (steerFn && p.circling) {
+      steerFn(p, prev);
+      prev = p.air;
+    }
     p.step(w, 0.2, t);
   }
   return { p, climb: (p.z - z0) / seconds };
@@ -27,7 +31,8 @@ function circleIn(w, centering, steerFn, seconds = 300) {
 
 test('Ein Gleitflug ohne Thermik endet mit einer Landung', () => {
   const w = new World({ seed: 1, quality: 0.01 });
-  w.thermals = []; w.update = () => {};
+  w.thermals = [];
+  w.update = () => {};
   const p = new Pilot({ id: 'p', glider: 'EN-B' });
   p.launch(w, 0);
   for (let t = 0; t < 3000 && p.state === 'flying'; t += 1) p.step(w, 1, t);
@@ -66,6 +71,6 @@ test('Ausleiten in die Richtung, in die man schaut', () => {
   p.step(w, 0.2, t);
   while (Math.cos(p.heading) > -0.9) p.step(w, 0.2, (t += 0.2));
   p.wantCircle = false;
-  p.step(w, 0.2, (t += 0.2));
+  p.step(w, 0.2, t + 0.2);
   assert.equal(p.dir, -1);
 });

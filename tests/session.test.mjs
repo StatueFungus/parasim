@@ -16,7 +16,11 @@ test('Eine Runde mit Bots ist deterministisch', () => {
 });
 
 test('Bots fliegen sinnvolle Strecken und bleiben nicht rückwärts hängen', () => {
-  for (const world of [{ seed: 2, terrain: 'flat' }, { seed: 6, terrain: 'mountain' }, { seed: 4, terrain: 'flat', wind: 15 }]) {
+  for (const world of [
+    { seed: 2, terrain: 'flat' },
+    { seed: 6, terrain: 'mountain' },
+    { seed: 4, terrain: 'flat', wind: 15 },
+  ]) {
     const s = fly(world);
     for (const p of s.pilots) {
       assert.ok(Number.isFinite(p.x) && Number.isFinite(p.z), `${p.name}: Position endlich`);
