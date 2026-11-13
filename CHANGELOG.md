@@ -2,6 +2,12 @@
 
 Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
+## [0.4.0](https://github.com/StatueFungus/parasim/compare/v0.3.1...v0.4.0) (2026-11-13)
+
+### Neue Funktionen
+
+* **hud:** Handy-Bedienung, Assistent rechts und Tageszeit im Training ([583e62c](https://github.com/StatueFungus/parasim/commit/583e62c353e8f9bf5259dffbd227e2116bfc2eae))
+
 ## [0.3.1](https://github.com/StatueFungus/parasim/compare/v0.3.0...v0.3.1) (2026-11-13)
 
 ### Fehlerbehebungen

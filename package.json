@@ -1,6 +1,6 @@
 {
   "name": "parasim",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "Streckenflug-Simulator für Gleitschirmpiloten im Browser: Thermik finden, hochkreisen, weit gleiten.",
   "license": "MPL-2.0",
