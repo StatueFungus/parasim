@@ -199,12 +199,13 @@ kbd {
   transform: translateX(-50%);
   width: max-content;
   max-width: min(560px, calc(100vw - 32px));
-  padding: 8px 14px;
+  padding: 6px 14px;
   border-radius: var(--r);
-  background: var(--glass);
-  border: 1px solid var(--line);
+  background: rgba(11, 21, 31, 0.32);
   font-size: 14px;
   text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -374,7 +375,7 @@ kbd {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
   width: min(250px, 44vh);
   height: min(250px, 44vh);
   border-radius: 50%;
@@ -544,6 +545,11 @@ kbd {
   gap: 6px;
   max-width: 50%;
 }
+/* Im Kreis wirkt der Beschleuniger nicht; dort steht dann der Zentrierassistent */
+#hud.circling .speedbar,
+#hud.circling .maneuver {
+  display: none;
+}
 /* Fluginstrumente erst nach dem Start; am Boden steht die Uhrzeit oben an Stelle des Varios */
 #hud:not(.aloft) .flight,
 #hud.aloft .ground {
@@ -564,13 +570,82 @@ kbd {
   font-size: 28px;
 }
 
+/* Schema für den Kreis-Daumen (nur Touch): Feld unten links, der Punkt zeigt die Kurve */
+.thumbzone {
+  --tz: 0;
+  position: absolute;
+  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 8px);
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.thumbzone.active {
+  opacity: 0.9;
+}
+.tz-pad {
+  position: relative;
+  width: 100%;
+  height: 56px;
+  border-radius: 28px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+}
+.tz-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateX(calc(var(--tz) * 46px));
+}
+.thumbzone.active .tz-dot {
+  background: rgba(255, 84, 112, 0.45);
+  border-color: #fff;
+}
+/* Beim selbst Zentrieren: Pfeile links und rechts im Feld */
+.thumbzone.drag .tz-pad::before,
+.thumbzone.drag .tz-pad::after {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--f-display);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.thumbzone.drag .tz-pad::before {
+  content: '◀';
+  left: 10px;
+}
+.thumbzone.drag .tz-pad::after {
+  content: '▶';
+  right: 10px;
+}
+.tz-lbl {
+  font-family: var(--f-display);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+}
+
 .touchhint {
   position: absolute;
   left: 0;
   right: 0;
   bottom: calc(150px + env(safe-area-inset-bottom, 0px));
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-end;
+  padding-right: calc(max(16px, env(safe-area-inset-right, 0px)) + 110px);
   font-family: var(--f-display);
   font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
@@ -1134,13 +1209,44 @@ input[type='range'] {
     padding: 4px 7px;
     font-size: 11px;
   }
+  /* Vario einzeilig: Wert, Kreismittel, Skala */
   .vario {
     top: calc(6px + env(safe-area-inset-top, 0px));
-    padding: 6px 10px 4px;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 10px;
+    gap: 10px;
+  }
+  .vread {
+    gap: 3px;
   }
   .vread b {
-    font-size: 28px;
+    font-size: 20px;
+  }
+  .vread b.small {
+    font-size: 13px;
+  }
+  .vread .unit {
+    font-size: 10px;
+  }
+  .vavg {
+    margin-left: 6px;
+  }
+  .vavg .lbl {
+    font-size: 8px;
+  }
+  .vscale {
+    flex: 1;
+    height: 6px;
+  }
+  .vneedle {
+    top: -3px;
+    bottom: -3px;
+    width: 3px;
+    margin-left: -1.5px;
+  }
+  .vticks {
+    display: none;
   }
   .track {
     height: 90px;
@@ -1149,10 +1255,10 @@ input[type='range'] {
     right: calc(max(16px, env(safe-area-inset-right, 0px)) + 66px);
   }
   :root {
-    --vario-w: 184px;
+    --vario-w: 196px;
   }
   .assist {
-    top: calc(50% + 10px);
+    top: calc(50% - 4px);
     width: min(170px, 40vh);
     height: min(170px, 40vh);
   }
@@ -1175,15 +1281,20 @@ input[type='range'] {
   }
   /* Tipps neben dem Zentrierassistenten, nicht darüber */
   .coach {
-    top: calc(104px + env(safe-area-inset-top, 0px));
-    font-size: 13px;
+    top: calc(48px + env(safe-area-inset-top, 0px));
+    padding: 4px 10px;
+    font-size: 12px;
     max-width: calc(100vw - 2 * (max(16px, env(safe-area-inset-left, 0px)) + min(170px, 40vh) + 12px));
   }
   .goal {
-    top: calc(142px + env(safe-area-inset-top, 0px));
+    top: calc(84px + env(safe-area-inset-top, 0px));
   }
   .bottombar .clock {
     bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+  }
+  .thumbzone {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    width: 130px;
   }
   .groundpanel {
     bottom: calc(48px + env(safe-area-inset-bottom, 0px));

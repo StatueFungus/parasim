@@ -27,6 +27,7 @@ const prefs = Object.assign(
     thermals: false,
     mc: 1,
     centering: 'auto',
+    daytime: 'morning',
   },
   load('prefs', {}),
 );
@@ -123,18 +124,30 @@ function dailyCfg() {
 
 const STEER_RATE = 1.2; // Schieberweg pro echter Sekunde bei gehaltener Pfeiltaste
 const STEER_PX = 110; // Daumenweg in Pixeln für eine Schiebereinheit
+// Startzeit im Training: Die Runde dauert immer 2 Flugstunden, der Tag endet entsprechend später.
+const DAYTIMES = {
+  morning: { t: 0, name: 'Vormittag', desc: 'Start 11:30 Uhr. Die Thermik baut sich erst auf, etwa 30 Minuten warten lohnt sich.' },
+  noon: { t: 1800, name: 'Mittag', desc: 'Start 12:00 Uhr. Die Thermik ist voll entwickelt, du kannst sofort los.' },
+  afternoon: {
+    t: 5400,
+    name: 'Nachmittag',
+    desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis, im Gebirge schiebt Talwind. Gegen Ende lässt sie nach.',
+  },
+};
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
 const TERRAIN_NAMES = { flat: 'Flachland', mountain: 'Gebirge' };
 
 function describe(cfg) {
   const w = cfg.world;
-  return `${cfg.glider} · ${TERRAIN_NAMES[w.terrain]} · ${CLOUD_NAMES[w.clouds]} · Wind ${windText(w.wind)}`;
+  const day = cfg.daytime && cfg.daytime !== 'morning' ? ` · ${DAYTIMES[cfg.daytime].name}` : '';
+  return `${cfg.glider} · ${TERRAIN_NAMES[w.terrain]} · ${CLOUD_NAMES[w.clouds]} · Wind ${windText(w.wind)}${day}`;
 }
 
 function pbKey(cfg) {
   const w = cfg.world;
-  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}:${cfg.centering}`;
+  const day = cfg.daytime && cfg.daytime !== 'morning' ? ':' + cfg.daytime : '';
+  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}:${cfg.centering}${day}`;
 }
 
 // ---------- Spielstart ----------
@@ -367,18 +380,24 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('blur', () => {
   input.circle = input.up = input.down = input.left = input.right = input.touchCircle = false;
+  touches.clear();
 });
 
-// Touch: linke Hälfte halten = kreisen; beim selbst Zentrieren mit demselben Daumen waagrecht ziehen = Kurvenschieber.
-// Rechte Hälfte senkrecht wischen = Beschleuniger.
+// Touch: linke Hälfte halten = kreisen, kurz antippen = wenden; beim selbst Zentrieren mit demselben Daumen
+// waagrecht ziehen = Kurvenschieber. Rechte Hälfte senkrecht wischen = Beschleuniger.
+const TAP_MS = 200; // kürzer gilt als Antippen; erst danach beginnt das Kreisen
+const TAP_PX = 18;
 const touches = new Map();
 const view = $('view');
+function touchCircling() {
+  const now = performance.now();
+  return [...touches.values()].some((t) => t.kind === 'circle' && (t.held ||= now - t.t0 >= TAP_MS));
+}
 view.addEventListener('pointerdown', (e) => {
   if (!game || paused) return;
   sound.init();
   if (e.clientX < innerWidth / 2) {
-    touches.set(e.pointerId, { kind: 'circle', x0: e.clientX, s0: null });
-    input.touchCircle = true;
+    touches.set(e.pointerId, { kind: 'circle', x0: e.clientX, tx: e.clientX, ty: e.clientY, t0: performance.now(), held: false, s0: null });
   } else touches.set(e.pointerId, { kind: 'bar', y0: e.clientY, bar0: game.player.bar });
   view.setPointerCapture?.(e.pointerId);
 });
@@ -397,8 +416,11 @@ view.addEventListener('pointermove', (e) => {
   }
 });
 function endTouch(e) {
+  const t = touches.get(e.pointerId);
   touches.delete(e.pointerId);
-  input.touchCircle = [...touches.values()].some((t) => t.kind === 'circle');
+  input.touchCircle = touchCircling();
+  const tap = t?.kind === 'circle' && !t.held && performance.now() - t.t0 < TAP_MS;
+  if (e.type === 'pointerup' && tap && Math.hypot(e.clientX - t.tx, e.clientY - t.ty) < TAP_PX) turnTo();
 }
 view.addEventListener('pointerup', endTouch);
 view.addEventListener('pointercancel', endTouch);
@@ -429,7 +451,6 @@ document.addEventListener('pointerdown', (e) => {
   if (!$('toolMenu').hidden && !e.target.closest('.tools')) toggleToolMenu(false);
 });
 $('bMc').onclick = cycleMc;
-$('bTurn').onclick = () => turnTo();
 $('bLane').onclick = () => laneTo();
 $('gStart').onclick = launchOrRestart;
 $('gFast').onclick = toggleFast;
@@ -564,11 +585,12 @@ for (const id of [
   'hud',
   'assist',
   'steerBox',
+  'thumbZone',
+  'thumbTxt',
   'steerKnob',
   'steerTxt',
   'hLane',
   'hRidge',
-  'bTurn',
   'bLane',
   'hRemain',
   'hClock',
@@ -631,12 +653,22 @@ function updateHud(dt) {
   H.hBar.textContent = Math.round(p.bar * 100) + ' %';
   H.barFill.style.height = p.bar * 100 + '%';
   // Den Assistenten gibt es in jedem Kreis, beim automatischen Zentrieren zum Zuschauen und Lernen.
+  // Er steht dann rechts an Stelle des Beschleunigers, der im Kreis ohnehin nicht wirkt.
   // Den Schieber nur, wenn man selbst steuert; den Kern zeigen Automatik und Assistiert, Profi nicht.
   const showAssist = flying && p.circling;
   const steering = showAssist && p.manual;
   H.assist.hidden = !showAssist;
   H.steerBox.hidden = !steering;
+  H.hud.classList.toggle('circling', showAssist);
   H.hud.classList.toggle('steering', steering);
+  // Am Handy zeigt ein Feld links, wo der Daumen hingehört; beim selbst Zentrieren wandert der Punkt mit der Kurve
+  H.thumbZone.hidden = !(isTouch && flying);
+  if (isTouch && flying) {
+    H.thumbZone.classList.toggle('active', input.touchCircle);
+    H.thumbZone.classList.toggle('drag', steering);
+    H.thumbZone.style.setProperty('--tz', steering ? (-p.steer).toFixed(3) : '0');
+    H.thumbTxt.textContent = steering ? '← ziehen: Kurve →' : p.circling ? 'Halten: weiter kreisen' : 'Halten: kreisen · Tippen: wenden';
+  }
   if (steering) {
     H.steerKnob.style.left = `${50 - p.steer * 46}%`;
     H.steerTxt.textContent = Math.abs(p.steer) < 0.03 ? 'geradeaus' : `${p.steer > 0 ? 'Links' : 'Rechts'} · ${Math.round(p.R)} m`;
@@ -661,8 +693,6 @@ function updateHud(dt) {
     H.hRidge.textContent = Math.round(p.z - w.ground(p.x)) + ' m';
     H.bLane.innerHTML = p.lane === 0 ? 'Ins Tal <kbd>E</kbd>' : 'Zur Kante <kbd>Q</kbd>';
   }
-  H.bTurn.innerHTML = p.turning ? 'Wende …' : p.dir === 1 ? 'Wenden <kbd>←</kbd>' : 'Auf Kurs <kbd>→</kbd>';
-  H.bTurn.disabled = !flying || p.circling || p.turning;
   H.bLane.disabled = !flying;
 
   updateGroundPanel(s, p, cfg);
@@ -759,6 +789,7 @@ function tickGame(dt) {
   if (!paused && !game.ended) {
     if (input.up) p.bar = Math.min(1, p.bar + dt * 0.9);
     if (input.down) p.bar = Math.max(0, p.bar - dt * 0.9);
+    input.touchCircle = touchCircling();
     p.wantCircle = input.circle || input.touchCircle;
     if (p.state === 'flying') fast = false;
     if (p.circling && p.manual) {
@@ -988,6 +1019,12 @@ segInit('sClouds', 'clouds');
 segInit('sQuality', 'quality', Number);
 segInit('sLen', 'len', Number);
 segInit('sCenter', 'centering');
+segInit('sDaytime', 'daytime');
+const daytimeLabel = () => {
+  $('daytimeDesc').textContent = DAYTIMES[prefs.daytime].desc;
+};
+$('sDaytime').addEventListener('click', daytimeLabel);
+daytimeLabel();
 $('gliderDesc').textContent = GLIDERS[prefs.glider].desc;
 $('sWind').value = prefs.wind;
 const windLabel = () => {
@@ -1013,6 +1050,7 @@ for (const b of document.querySelectorAll('.mode')) {
       setupMode = m;
       $('setupTitle').textContent = m === 'race' ? 'Wettkampf' : 'Freies Training';
       $('sBots').querySelector('[data-v="0"]').hidden = m === 'race';
+      $('fDaytime').hidden = m !== 'training';
       if (m === 'race' && prefs.bots === 0) {
         prefs.bots = 3;
         syncBots();
@@ -1024,9 +1062,20 @@ for (const b of document.querySelectorAll('.mode')) {
 for (const b of document.querySelectorAll('[data-back]')) b.onclick = () => show(b.closest('#brief') ? 'lessons' : 'menu');
 
 $('setupGo').onclick = () => {
+  const daytime = setupMode === 'training' ? prefs.daytime : 'morning';
+  const tStart = DAYTIMES[daytime].t;
   startGame({
     mode: setupMode,
-    world: { seed: (Math.random() * 1e9) >>> 0, terrain: prefs.terrain, wind: prefs.wind, clouds: prefs.clouds, quality: prefs.quality },
+    world: {
+      seed: (Math.random() * 1e9) >>> 0,
+      terrain: prefs.terrain,
+      wind: prefs.wind,
+      clouds: prefs.clouds,
+      quality: prefs.quality,
+      dayLen: tStart + 7200,
+    },
+    daytime,
+    tStart,
     glider: prefs.glider,
     bots: prefs.bots,
     len: prefs.len,

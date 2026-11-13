@@ -72,7 +72,6 @@
     </div>
 
     <div class="maneuver flight">
-      <button id="bTurn" class="tool" title="Wenden (← zurück, → auf Kurs)">Wenden <kbd>←</kbd></button>
       <button id="bLane" class="tool" title="Linie wechseln (Q Hangkante, E Talmitte)" hidden>Ins Tal <kbd>E</kbd></button>
     </div>
 
@@ -85,7 +84,7 @@
       <div class="readout hide-sm"><span class="lbl">Höhe</span><b id="hMsl">0 m</b></div>
       <div class="readout"><span class="lbl">Fahrt</span><b id="hSpeed">0 km/h</b></div>
       <div class="readout"><span class="lbl">Grund</span><b id="hGs">0 km/h</b></div>
-      <div class="readout hide-sm"><span class="lbl">Gleitzahl</span><b id="hLd">–</b></div>
+      <div class="readout"><span class="lbl">Gleitzahl</span><b id="hLd">–</b></div>
     </div>
     <canvas id="mini" aria-label="Übersicht"></canvas>
 
@@ -104,7 +103,11 @@
         <button id="gEnd" class="btn ghost">Runde beenden</button>
       </div>
     </div>
-    <div id="touchHint" class="touchhint" hidden><span>Links halten: kreisen</span><span>Rechts wischen: Beschleuniger</span></div>
+    <div id="thumbZone" class="thumbzone" aria-hidden="true" hidden>
+      <span class="tz-pad"><span class="tz-dot"></span></span>
+      <span class="tz-lbl" id="thumbTxt">Halten: kreisen</span>
+    </div>
+    <div id="touchHint" class="touchhint" hidden><span>Rechts wischen: Beschleuniger</span></div>
   </div>
 
   <!-- ===== Hauptmenü ===== -->
@@ -167,8 +170,8 @@
               <dd>Pause</dd>
             </dl>
             <p class="note">
-              Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger. Beim selbst Zentrieren
-              mit dem Kreis-Daumen waagrecht ziehen, um die Kurve zu steuern.
+              Am Handy: linke Hälfte halten zum Kreisen, kurz antippen zum Wenden, rechts nach oben oder unten wischen für den
+              Beschleuniger. Beim selbst Zentrieren mit dem Kreis-Daumen waagrecht ziehen, um die Kurve zu steuern.
             </p>
           </div>
           <div>
@@ -228,6 +231,13 @@
         <div class="seg" id="sQuality">
           <button data-v="0.8">Zäh</button><button data-v="1">Normal</button><button data-v="1.25">Kräftig</button>
         </div>
+      </div>
+      <div class="field" id="fDaytime">
+        <span class="flbl">Tageszeit</span>
+        <div class="seg" id="sDaytime">
+          <button data-v="morning">Vormittag</button><button data-v="noon">Mittag</button><button data-v="afternoon">Nachmittag</button>
+        </div>
+        <p class="hint" id="daytimeDesc"></p>
       </div>
       <div class="field">
         <span class="flbl">Zentrieren</span>

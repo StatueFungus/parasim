@@ -146,8 +146,8 @@ export const LESSONS = [
     goal: 'Wende, finde die Thermik hinter dir und steige auf 900 m über Grund.',
     intro: [
       'Gerade bist du durch kräftiges Steigen geflogen, ohne einzukreisen. Vor dir ist nur noch Abwind.',
-      'Mit der Pfeiltaste ← (oder dem Knopf «Wenden») drehst du um. Die Wende kostet ein paar Sekunden und etwas Höhe.',
-      'Flieg zurück, kreise im Steigen ein und wende danach mit → wieder auf Kurs. Merke: Zurückfliegen lohnt sich nur, wenn der Bart nah ist.',
+      'Mit der Pfeiltaste ← (am Handy: linke Hälfte kurz antippen) drehst du um. Die Wende kostet ein paar Sekunden und etwas Höhe.',
+      'Flieg zurück, kreise im Steigen ein und wende danach mit → (oder erneutem Antippen) wieder auf Kurs. Merke: Zurückfliegen lohnt sich nur, wenn der Bart nah ist.',
     ],
     setup: {
       world: {

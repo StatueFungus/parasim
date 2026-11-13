@@ -36,9 +36,11 @@ export class Session {
 
   addBots(n, glider) {
     const rng = mulberry32(hash(this.world.seed, 'bots'));
+    // Wer später am Tag beginnt, findet schon entwickelte Thermik vor; dann warten auch die Bots kaum noch.
+    const wait = 1 - 0.85 * Math.min(1, this.tStart / 1800);
     for (let i = 0; i < n && i < BOT_ROSTER.length; i++) {
       const b = BOT_ROSTER[i];
-      const launchAt = this.tStart + (b.skill > 0.8 ? 1200 + 900 * rng() : 300 + 1500 * rng());
+      const launchAt = this.tStart + wait * (b.skill > 0.8 ? 1200 + 900 * rng() : 300 + 1500 * rng());
       this.add(
         new Pilot({
           id: 'bot' + i,

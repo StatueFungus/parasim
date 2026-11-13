@@ -4,14 +4,14 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
 - **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
 
 ## Wenden und Linienwahl
 
-- **Wenden** (← / →): Eine 180°-Wende dauert 7 Flugsekunden und kostet etwas Höhe. Gezählt wird die Landeposition, Zurückfliegen lohnt sich also nur, wenn ein guter Bart nah hinter dir liegt.
+- **Wenden** (← / →): Eine 180°-Wende dauert 7 Flugsekunden und kostet etwas Höhe. Gezählt wird die Landeposition, Zurückfliegen lohnt sich also nur, wenn ein guter Bart nah hinter dir liegt. Am Handy tippst du dafür die linke Hälfte kurz an (halten heisst kreisen, das beginnt erst nach 0.2 s).
 - **Linien im Gebirge** (Q / E): An der **Hangkante** gibt es dichte, kräftige Thermik und Hangaufwind, aber der Grat ist nah. In der **Talmitte** liegt der Boden tief, dafür trägt es schwach, es sinkt etwas stärker und ab Mittag schiebt der Talwind. Der Wechsel dauert knapp eine Flugminute, in der du langsamer vorankommst.
 - Computerpiloten nutzen beides: Gute Piloten fliegen mit Höhenreserve an der Kante, weichen tief ins Tal aus und kehren zu einem überflogenen Bart zurück. Anfänger bleiben in der Talmitte.
 
@@ -43,7 +43,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 | Profi       | Kurvenschieber                                                                          | Draufsicht ohne Kern, nur das gemessene Steigen |
 
 - **Leertaste halten** startet eine moderate Kurve (≈ 40 m Radius) in der zuletzt geflogenen Drehrichtung.
-- **Kurvenschieber** mit ← / → (am Handy: den Kreis-Daumen waagrecht ziehen): stufenlos von enger Linkskurve über geradeaus bis zur engen Rechtskurve. Der Radius ist `25 m / |Schieber|`; enge Kurven kosten mehr Sinken.
+- **Kurvenschieber** mit ← / → (am Handy: den Kreis-Daumen waagrecht ziehen): stufenlos von enger Linkskurve über geradeaus bis zur engen Rechtskurve. Am Handy zeigt ein Feld unten links, wo der Daumen hingehört. Der Assistent steht beim Kreisen rechts an Stelle des Beschleunigers. Der Radius ist `25 m / |Schieber|`; enge Kurven kosten mehr Sinken.
 - **Zentrieren**: Wird das Steigen stärker, Kurve aufmachen (Schieber zur Mitte), so fliegt man Richtung Kern. Wird es schwächer, enger eindrehen.
 - **Ausleiten**: Beim Loslassen fliegt man in die Richtung weiter, in die man gerade schaut, also auf Kurs oder zurück.
 - Die Simulation läuft für alle im gleichen Tempo (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
