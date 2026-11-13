@@ -154,7 +154,7 @@ export class Renderer {
         const z0 = zBot + i * dz, zm = z0 + dz / 2;
         const cx = this.sx(w.coreX(th, zm, s.t));
         const hw = w.radiusAt(th, zm, s.t) * 1.6 * this.kx;
-        const boost = w.clouds !== 'blue' ? 1 + 0.3 * Math.min(1, Math.max(0, (zm - (base - 450)) / 410)) : 1;
+        const boost = w.clouds !== 'blue' ? 1 + 0.15 * Math.min(1, Math.max(0, (zm - (base - 450)) / 410)) : 1;
         const fade = i === slices - 1 && zTop < base - 20 ? 0.5 : 1;   // Blasenoberkante weich
         const a = Math.min(0.55, a0 * boost) * fade;
         const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
@@ -345,17 +345,18 @@ export class Renderer {
     ctx.lineWidth = 1.3;
     for (const th of w.thermals) {
       if (!th.birds || w.strength(th, s.t) < 1) continue;
-      // Vögel kreisen nur in dem Teil der Säule, der gerade trägt
-      const lo = Math.max(th.gz + 120, w.bottomZ(th, s.t)), hi = Math.min(base - 250, w.topZ(th, s.t));
-      if (hi - lo < 60) continue;
-      const span = hi - lo;
-      for (let k = 0; k < 3; k++) {
-        const z = lo + ((s.t * 1.2 + k * 260 + th.id * 37) % span);
+      // Feste Kreisbahnen, unabhängig vom Wachstum der Säule; sichtbar nur, wo der Bart gerade trägt.
+      const lo = Math.max(th.gz + 120, w.bottomZ(th, s.t)), hi = Math.min(base - 200, w.topZ(th, s.t));
+      for (let k = 0; k < 2; k++) {
+        // Auf und ab wie ein Dreieck, damit nichts springt
+        const ph = ((s.t * 0.7 + k * 450 + th.id * 37) % 2200) / 1100;
+        const z = th.gz + 150 + 1100 * (ph < 1 ? ph : 2 - ph);
+        if (z < lo || z > hi) continue;
         const cx = w.coreX(th, z, s.t);
         if (this.sx(cx) < -50 || this.sx(cx) > this.W + 50) continue;
-        const ang = s.t * 0.25 + k * 2.1;
+        const ang = s.t * 0.12 + k * 3.1;
         const x = this.sx(cx + Math.cos(ang) * 90), y = this.sy(z) + Math.sin(ang) * 3;
-        const f = 3 + Math.sin(s.t * 3 + k) * 1.2;
+        const f = 3 + Math.sin(s.t * 0.5 + k) * 1.2;
         ctx.beginPath();
         ctx.moveTo(x - 5, y - f * 0.6); ctx.quadraticCurveTo(x - 2, y - f, x, y); ctx.quadraticCurveTo(x + 2, y - f, x + 5, y - f * 0.6);
         ctx.stroke();

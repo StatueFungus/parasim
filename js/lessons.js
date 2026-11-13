@@ -62,7 +62,7 @@ export const LESSONS = [
   {
     id: 'sollfahrt',
     title: 'Sollfahrt im Gegenwind',
-    goal: 'Erreiche 8 km gegen 15 km/h Gegenwind.',
+    goal: 'Erreiche 7 km gegen 15 km/h Gegenwind.',
     intro: [
       'Gegenwind frisst Strecke. Mit Trimmgeschwindigkeit kommst du über Grund nur langsam voran.',
       'Der weisse Pfeil am Beschleuniger zeigt die Sollfahrt nach MacCready. Sie berücksichtigt Wind, Sinken und deinen MC-Wert.',
@@ -71,8 +71,8 @@ export const LESSONS = [
     setup: { world: { terrain: 'flat', wind: -15, clouds: 'cumulus', quality: 1.1 }, tStart: 2400, duration: 1800, airStart: 1000, showThermals: false, glider: 'EN-B' },
     check(s, p) {
       const d = p.dist / 1000;
-      if (d >= 8) return { done: true };
-      return { text: `${d.toFixed(1)} / 8 km` };
+      if (d >= 7) return { done: true };
+      return { text: `${d.toFixed(1)} / 7 km` };
     },
   },
   {
@@ -116,7 +116,7 @@ export const LESSONS = [
   {
     id: 'linie',
     title: 'Linienwahl im Gebirge',
-    goal: 'Fliege im Gebirge 20 km weit.',
+    goal: 'Fliege im Gebirge 15 km weit.',
     intro: [
       'Im Gebirge wählst du deine Linie. An der sonnigen Hangkante (Taste Q) stehen viele kräftige Bärte, aber der Grat ist nah.',
       'In der Talmitte (Taste E) ist viel Luft unter dir. Dort trägt es schlecht, dafür schiebt ab Mittag der Talwind.',
@@ -125,8 +125,8 @@ export const LESSONS = [
     setup: { world: { terrain: 'mountain', wind: 0, clouds: 'cumulus', quality: 1, seed: 7 }, tStart: 1800, duration: 3600, showThermals: false, glider: 'EN-B', penalty: 0 },
     check(s, p) {
       const d = p.score() / 1000;
-      if (d >= 20) return { done: true };
-      return { text: `${d.toFixed(1)} / 20 km · ${p.l < 0.5 ? 'Hangkante' : 'Talmitte'}` };
+      if (d >= 15) return { done: true };
+      return { text: `${d.toFixed(1)} / 15 km · ${p.l < 0.5 ? 'Hangkante' : 'Talmitte'}` };
     },
   },
   {
@@ -148,7 +148,7 @@ export const LESSONS = [
   {
     id: 'pruefung',
     title: 'Prüfungsflug',
-    goal: 'Fliege in einer vollen Runde 25 km.',
+    goal: 'Fliege in einer vollen Runde 20 km.',
     intro: [
       'Jetzt alles zusammen: Du entscheidest selbst, wann du startest. Die Anzeige «Thermikentwicklung» hilft dir dabei.',
       'Zu früh: schwache Thermik, tiefe Basis, Absaufgefahr. Zu spät: beste Bedingungen, aber weniger Zeit.',
@@ -157,8 +157,8 @@ export const LESSONS = [
     setup: { world: { terrain: 'flat', wind: 5, clouds: 'cumulus', quality: 1 }, tStart: 0, duration: 7200, penalty: 600, showThermals: false, glider: 'EN-B' },
     check(s, p) {
       const d = p.score() / 1000;
-      if (d >= 25) return { done: true };
-      return { text: `${d.toFixed(1)} / 25 km` };
+      if (d >= 20) return { done: true };
+      return { text: `${d.toFixed(1)} / 20 km` };
     },
   },
 ];

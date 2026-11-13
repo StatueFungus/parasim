@@ -4,6 +4,8 @@ import { mulberry32, hash, noise2, fbm, clamp, smoothstep } from './rng.js';
 export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
 const GROW = 2;   // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
+const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
+const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
 
 export class World {
   constructor(o = {}) {
@@ -129,12 +131,12 @@ export class World {
   // Eine Quelle erzeugt eine Thermik, manchmal einen Zwilling daneben, der später mit ihr verschmelzen kann.
   spawn(src, tb) {
     const r = src.rng;
-    const w0 = (1.7 + 2.9 * Math.pow(r(), 1.4)) * src.q * this.quality;
-    const life = (11 + 15 * r()) * 60;
+    const w0 = (1.9 + 1.7 * Math.pow(r(), 1.4)) * src.q * this.quality;
+    const life = (18 + 20 * r()) * 60;
     const rad = 100 + 120 * r() + 25 * w0;
     const gap = (1.5 + 7 * r()) * 60;
     const sx = src.x + (r() - 0.5) * 200;
-    const birds = w0 > 2.6 && r() < 0.5;
+    const birds = w0 > 2.7 && r() < 0.35;
     const twin = r() < 0.22, tSide = r() < 0.5 ? -1 : 1, tOff = 300 + 220 * r(), tW = 0.75 + 0.25 * r(), tDelay = 150 * r();
     const out = [this.makeThermal(sx, src.lane, tb, life, w0, rad, hash(this.seed, 'c' + src.lane, src.i, Math.round(tb)), birds)];
     if (twin) {
@@ -190,7 +192,7 @@ export class World {
         const W = a.w0 + b.w0;
         const life = Math.max(a.tb + a.life, b.tb + b.life) - t + 600;
         const sx = (a.sx * a.w0 + b.sx * b.w0) / W;
-        const m = this.makeThermal(sx, a.lane, t - 0.3 * life, life, Math.max(a.w0, b.w0) * 1.12 + 0.15 * Math.min(a.w0, b.w0),
+        const m = this.makeThermal(sx, a.lane, t - 0.3 * life, life, Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0),
           Math.hypot(a.r, b.r) * 0.95, hash(this.seed, 'm', a.seed, b.seed), a.birds || b.birds, { merged: true });
         m.rs = t - 4000;
         list.splice(j, 1);
@@ -220,7 +222,7 @@ export class World {
     const rise = this.riseSpeed(th, t);
     let drift = this.windMs * 833.3 * Math.pow(h / 1000, 1.2);
     if (th.lane) drift += this.valleyWind(t) * Math.min(h, 600);
-    return th.sx + drift / rise;
+    return th.sx + (LEAN * drift) / rise;
   }
 
   // Wie schnell der Kern auf Höhe z leewärts wandert, wenn man mit vz steigt (m/s): d coreX / dz · vz
@@ -229,7 +231,7 @@ export class World {
     const rise = this.riseSpeed(th, t);
     let slope = this.windMs * Math.pow(Math.max(h, 1) / 1000, 0.2);
     if (th.lane && h < 600) slope += this.valleyWind(t);
-    return (slope / rise) * vz;
+    return ((LEAN * slope) / rise) * vz;
   }
 
   // Steiggeschwindigkeit der Thermikluft, auch für Wachstum und Schräglage
@@ -311,7 +313,7 @@ export class World {
       f *= smoothstep(top + 80, top - 40, z);
       if (bot > -Infinity) f *= smoothstep(bot - 80, bot + 40, z);
       // Unter der Wolke wird es stärker (Kondensationswärme), bei Blauthermik bremst die Inversion.
-      if (this.clouds !== 'blue') f *= 1 + 0.3 * smoothstep(base - 450, base - 40, z);
+      if (this.clouds !== 'blue') f *= 1 + CLOUD_BOOST * smoothstep(base - 450, base - 40, z);
       else if (base - z < 250) f *= Math.max(0.15, (base - z) / 250);
       w += s * (core * f - ring);
       if (core > inCore) inCore = core;

@@ -26,15 +26,16 @@ ES-Module brauchen einen Webserver; `index.html` direkt als Datei öffnen funkti
 
 ## Lebenszyklus der Thermik
 
+- **Stärke und Dauer**: Kerne von etwa 2 bis 3.5 m/s (netto im Kreis meist 0.7 bis 2.5 m/s), Lebensdauer 18 bis 38 Minuten.
 - **Wachstum von unten**: Die Thermikblase steigt mit doppelter Steiggeschwindigkeit vom Boden auf (bei 1500 m Säule etwa 5 Minuten). Darüber trägt es noch nicht. Die Wolke entsteht erst, wenn die Blase die Basis erreicht, und wächst dann einige Minuten.
 - **Abreissen beim Zerfall**: Ab drei Vierteln der Lebensdauer steigt die Unterkante des Barts. Wer tief ist, verliert ihn zuerst.
 - **Breiter mit der Höhe**: Unten hat der Bart gut die Hälfte seines vollen Radius, ab 900 m über Grund die volle Breite. Ein reifer Bart ist etwas breiter als ein junger.
-- **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 30 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
+- **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 15 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
 - **Verschmelzen**: Etwa jede fünfte Quelle erzeugt einen Zwillingsbart in 300–520 m Abstand. Nahe Bärte ziehen sich an und verschmelzen zu einem breiteren, kräftigeren Bart mit grösserer Wolke.
 
 ## Bärte im Wind
 
-- Thermik löst sich an einem festen Punkt am Boden ab und wird beim Aufsteigen vom Wind versetzt. Der Kern auf Höhe h liegt um `833 · (h/1000)^1.2 · Wind / Steigen` Meter leewärts (Windprofil `(h/1000)^0.2`).
+- Thermik löst sich an einem festen Punkt am Boden ab und wird beim Aufsteigen vom Wind versetzt. Der Kern auf Höhe h liegt um `0.35 · 833 · (h/1000)^1.2 · Wind / Steigen` Meter leewärts (Windprofil `(h/1000)^0.2`; der Faktor 0.35 berücksichtigt, dass Thermikkerne geschlossener aufsteigen als einzelne Luftpakete). Bei 10 km/h steht ein Bart über 1500 m etwa 0.5 km schräg.
 - Auf Flughöhe liegt das Steigen damit luvseitig der Wolke: bei Rückenwind vor ihr, bei Gegenwind hinter ihr.
 - Der Wind nimmt mit der Höhe zu. Das Cockpit zeigt den Wind auf deiner Flughöhe.
 - Beim Kreisen driftest du mit dem Wind; die Flugspur zeigt das als Schleifen.
