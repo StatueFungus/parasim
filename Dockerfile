@@ -21,6 +21,10 @@ LABEL org.opencontainers.image.title="ParaSim" \
       org.opencontainers.image.source="https://github.com/StatueFungus/parasim" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${GIT_SHA}"
+# Sicherheitsupdates von Alpine einspielen, die neuer sind als das Basis-Image
+USER root
+# hadolint ignore=DL3017
+RUN apk upgrade --no-cache
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY deploy/nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html
