@@ -379,6 +379,9 @@ function centeringTip(s, p) {
   let lo = Infinity, hi = -Infinity;
   for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < 25; i--) { lo = Math.min(lo, pts[i].v); hi = Math.max(hi, pts[i].v); }
   if (hi - lo < 0.6) return null;
+  if (Math.abs(s.world.windKmh) >= 10) {
+    return 'Der Wind treibt dich leewärts aus dem Bart. Mach die Kurve auf, wenn du gegen den Wind fliegst, und dreh danach wieder ein.';
+  }
   return p.centering === 'assist'
     ? 'Der Kern liegt neben deinem Kreis. Fliegst du aufs Kreuz zu, Kurve aufmachen (Schieber zur Mitte), danach wieder eindrehen.'
     : 'Das Steigen schwankt. Wird es stärker, Kurve aufmachen (Schieber zur Mitte); wird es schwächer, enger eindrehen.';

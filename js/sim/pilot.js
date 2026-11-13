@@ -5,6 +5,11 @@ export const TURN_TIME = 7;      // Flugsekunden für eine 180°-Wende
 // Radius = R_TIGHT / |steer|; zu Beginn eine moderate Kurve von etwa 40 m.
 export const R_TIGHT = 25;
 export const STEER_START = 0.62;
+// Die Runde rafft die Zeit (2 Flugstunden in 12 Minuten). Damit man auf die Kreisbewegung reagieren kann,
+// läuft sie im Bart mit 40 % der Fluggeschwindigkeit (ein Kreis ≈ 7 s statt 2.5 s Echtzeit).
+// Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo wieder der Fluggeschwindigkeit.
+export const CIRCLE_PACE = 0.4;
+export const circlePace = (steer) => CIRCLE_PACE + (1 - CIRCLE_PACE) * (1 - Math.min(1, Math.abs(steer) / 0.5)) ** 2;
 export const LANE_TIME = 55;     // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
 
@@ -103,10 +108,19 @@ export class Pilot {
     if (this.circling) {
       // Drehrate aus dem Schieber; enge Kurven kosten mehr Sinken, geradeaus fliegt man mit Trimm.
       const a = Math.abs(this.steer);
-      const vms = this.v / 3.6;
+      const pace = circlePace(this.steer);
+      const vms = (this.v / 3.6) * pace;
       this.R = a > 0.02 ? R_TIGHT / a : Infinity;
       this.heading += (this.steer * vms / R_TIGHT) * dt;
-      this.x += (Math.cos(this.heading) * vms + wind) * dt;
+      // Auch das Herausdriften relativ zum Bart läuft im Kreistempo: Man treibt mit dem Kern mit,
+      // nur der Unterschied zwischen Wind und Kernversatz wirkt verlangsamt.
+      const near = world.nearestCore(this.x, this.z, t, Math.round(this.l), this.y);
+      let drift = wind;
+      if (near && Math.hypot(near.dx, near.dy) < 2.5 * near.r) {
+        const core = world.coreDriftRate(near.th, this.z, t, this.vz);
+        drift = core + pace * (wind - core);
+      }
+      this.x += (Math.cos(this.heading) * vms + drift) * dt;
       this.y += Math.sin(this.heading) * vms * dt;
       const sg = Math.sign(this.steer) || 1;
       this.cx = this.x - sg * Math.min(this.R, 1e4) * Math.sin(this.heading);

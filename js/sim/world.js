@@ -182,6 +182,15 @@ export class World {
     return th.sx + drift / rise;
   }
 
+  // Wie schnell der Kern auf Höhe z leewärts wandert, wenn man mit vz steigt (m/s): d coreX / dz · vz
+  coreDriftRate(th, z, t, vz) {
+    const h = Math.max(0, z - th.gz);
+    const rise = Math.max(1.8, th.w0 * this.dayFactor(t));
+    let slope = this.windMs * Math.pow(Math.max(h, 1) / 1000, 0.2);
+    if (th.lane && h < 600) slope += this.valleyWind(t);
+    return (slope / rise) * vz;
+  }
+
   // 0..1: wie stark der Wind die Thermik zerreisst
   torn() { return smoothstep(18, 35, Math.abs(this.windKmh)); }
 

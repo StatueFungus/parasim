@@ -46,8 +46,9 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 - **Kurvenschieber** mit ← / → (am Handy: den Kreis-Daumen waagrecht ziehen): stufenlos von enger Linkskurve über geradeaus bis zur engen Rechtskurve. Der Radius ist `25 m / |Schieber|`; enge Kurven kosten mehr Sinken.
 - **Zentrieren**: Wird das Steigen stärker, Kurve aufmachen (Schieber zur Mitte), so fliegt man Richtung Kern. Wird es schwächer, enger eindrehen.
 - **Ausleiten**: Beim Loslassen fliegt man in die Richtung weiter, in die man gerade schaut, also auf Kurs oder zurück.
-- Die Simulation läuft immer in Echtzeit (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
-- Im Test steigt ein Pilot mit dieser Technik ohne Wind etwa 1.7 statt 1.24 m/s (Automatik), bei 15 km/h Wind 1.1 statt 0.75 m/s. Das gilt auch, wenn der Schieber nur langsam bewegt wird.
+- Die Simulation läuft für alle im gleichen Tempo (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
+- **Kreistempo**: Weil die Runde die Zeit rafft, läuft die Bewegung relativ zum Bart mit 40 % der Fluggeschwindigkeit (`CIRCLE_PACE` in `pilot.js`). Ein Kreis dauert so etwa 7 statt 2.5 Sekunden Echtzeit. Das gilt auch für das Herausdriften im Wind; Steigen, Bart und Uhr bleiben unverändert. Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo der Fluggeschwindigkeit.
+- Im Test steigt ein Pilot mit dieser Technik ohne Wind etwa 1.6 statt 1.25 m/s (Automatik). Im Wind muss man gegen den Wind nachsetzen: Wer den Kern ansteuert, steigt bei 15 km/h 0.86 statt 0.57 m/s.
 - Computerpiloten nutzen die Automatik, je nach Können unterschiedlich nah am Kern.
 
 ## Steuerung
