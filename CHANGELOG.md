@@ -2,6 +2,12 @@
 
 Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
+## [0.2.1](https://github.com/StatueFungus/parasim/compare/v0.2.0...v0.2.1) (2026-11-13)
+
+### Fehlerbehebungen
+
+* **security:** Content-Security-Policy zusätzlich als Meta-Tag ([816ea9b](https://github.com/StatueFungus/parasim/commit/816ea9b1f8f1f2580836d20e0057a03e5bf01c72))
+
 ## [0.2.0](https://github.com/StatueFungus/parasim/compare/v0.1.0...v0.2.0) (2026-11-13)
 
 ### Neue Funktionen
