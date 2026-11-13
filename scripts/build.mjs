@@ -7,11 +7,15 @@ import { renderIndex, SRC } from './page.mjs';
 const DIST = new URL('../dist/', import.meta.url);
 
 function gitSha() {
-  try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch { return 'unknown'; }
+  try {
+    return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
 }
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const version = process.env.APP_VERSION || pkg.version;
+const version = (process.env.APP_VERSION || pkg.version).replace(/^v/, '');
 const commit = process.env.GIT_SHA || gitSha();
 
 await rm(DIST, { recursive: true, force: true });

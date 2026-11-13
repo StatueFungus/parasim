@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { renderIndex, SRC } from './page.mjs';
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -21,6 +22,18 @@ const TYPES = {
 createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   try {
+    if (path === '/version.json') {
+      const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+      let commit = 'unknown';
+      try {
+        commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+      } catch {
+        /* kein Git */
+      }
+      res.writeHead(200, { 'content-type': TYPES['.json'], 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ version: `${pkg.version}-dev`, commit }));
+      return;
+    }
     if (path === '/' || path === '/index.html') {
       res.writeHead(200, { 'content-type': TYPES['.html'], 'cache-control': 'no-store' });
       res.end(await renderIndex());

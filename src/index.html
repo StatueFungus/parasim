@@ -1,12 +1,15 @@
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <title>ParaSim Streckenflug</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<meta name="description" content="Streckenflug-Simulator für Gleitschirmpiloten: Thermik finden, hochkreisen, weit gleiten.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/style.css">
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<meta name="description" content="Streckenflug-Simulator für Gleitschirmpiloten: Thermik finden, hochkreisen, weit gleiten." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap"
+/>
+<link rel="stylesheet" href="css/style.css" />
 
 <div id="app">
   <canvas id="view" aria-label="Flugansicht"></canvas>
@@ -32,16 +35,21 @@
     <div id="coach" class="coach" aria-live="polite"></div>
 
     <div class="vario" aria-label="Variometer">
-      <div class="vscale"><div id="vNeedle" class="vneedle"></div><span>+5</span><span>0</span><span>−5</span></div>
+      <div class="vscale">
+        <div id="vNeedle" class="vneedle"></div>
+        <span>+5</span><span>0</span><span>−5</span>
+      </div>
       <div class="vread">
-        <b id="hVario">0.0</b><span class="unit">m/s</span>
-        <span class="lbl">Ø Kreis</span><b id="hAvg" class="small">–</b>
+        <b id="hVario">0.0</b><span class="unit">m/s</span> <span class="lbl">Ø Kreis</span><b id="hAvg" class="small">–</b>
       </div>
     </div>
 
     <div class="speedbar" aria-label="Beschleuniger">
       <span class="lbl">Beschl.</span>
-      <div class="track" id="barTrack"><div id="barFill" class="fill"></div><div id="stf" class="stf" title="Sollfahrt"></div></div>
+      <div class="track" id="barTrack">
+        <div id="barFill" class="fill"></div>
+        <div id="stf" class="stf" title="Sollfahrt"></div>
+      </div>
       <b id="hBar">0 %</b>
       <button id="bMc" class="mc" title="MacCready-Wert (M)">MC 1.0</button>
     </div>
@@ -59,7 +67,9 @@
 
     <div class="bottombar">
       <div class="readout"><span class="lbl">Über Grund</span><b id="hAgl">0 m</b></div>
-      <div class="readout" id="rowRidge" hidden><span class="lbl">Linie</span><b id="hLane">Hangkante</b><span class="sub"><span id="hRidge">0 m</span> über Grat</span></div>
+      <div class="readout" id="rowRidge" hidden>
+        <span class="lbl">Linie</span><b id="hLane">Hangkante</b><span class="sub"><span id="hRidge">0 m</span> über Grat</span>
+      </div>
       <div class="readout hide-sm"><span class="lbl">Höhe</span><b id="hMsl">0 m</b></div>
       <div class="readout"><span class="lbl">Fahrt</span><b id="hSpeed">0 km/h</b></div>
       <div class="readout"><span class="lbl">Grund</span><b id="hGs">0 km/h</b></div>
@@ -70,7 +80,10 @@
     <div id="ground" class="groundpanel" hidden>
       <div id="gTitle" class="gtitle">Startplatz</div>
       <div id="gText" class="gtext"></div>
-      <div id="gMeter" class="meter"><span class="lbl">Thermikentwicklung</span><div class="mtrack"><div id="gMeterFill"></div></div></div>
+      <div id="gMeter" class="meter">
+        <span class="lbl">Thermikentwicklung</span>
+        <div class="mtrack"><div id="gMeterFill"></div></div>
+      </div>
       <div class="gbtns">
         <button id="gStart" class="btn primary">Starten <kbd>Enter</kbd></button>
         <button id="gFast" class="btn">Zeitraffer <kbd>X</kbd></button>
@@ -84,7 +97,11 @@
   <section id="menu" class="screen menu">
     <div class="menu-inner">
       <header class="brand">
-        <svg class="glyph" viewBox="0 0 64 40" aria-hidden="true"><path d="M4 22 Q32 -4 60 22 Q32 10 4 22Z"/><path d="M8 21 L32 36 L56 21" fill="none" stroke-width="1.4"/><circle cx="32" cy="36" r="3.2"/></svg>
+        <svg class="glyph" viewBox="0 0 64 40" aria-hidden="true">
+          <path d="M4 22 Q32 -4 60 22 Q32 10 4 22Z" />
+          <path d="M8 21 L32 36 L56 21" fill="none" stroke-width="1.4" />
+          <circle cx="32" cy="36" r="3.2" />
+        </svg>
         <div>
           <h1>ParaSim</h1>
           <p class="tag">Streckenflug mit dem Gleitschirm. Thermik finden, hochkreisen, weit gleiten.</p>
@@ -93,7 +110,9 @@
       <div class="modes">
         <button class="mode" data-mode="training">
           <span class="mname">Freies Training</span>
-          <span class="mdesc">Schirm, Gelände, Wind und Wetter frei wählen. Thermik einblenden, Tipps vom Fluglehrer, Neustart jederzeit.</span>
+          <span class="mdesc"
+            >Schirm, Gelände, Wind und Wetter frei wählen. Thermik einblenden, Tipps vom Fluglehrer, Neustart jederzeit.</span
+          >
         </button>
         <button class="mode" data-mode="daily">
           <span class="mname">Tagesaufgabe</span>
@@ -114,17 +133,29 @@
           <div>
             <h3>Steuerung</h3>
             <dl class="keys">
-              <dt><kbd>Leertaste</kbd> halten</dt><dd>Kreisen</dd>
-              <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Beschleuniger</dd>
-              <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Wenden: zurück / wieder auf Kurs</dd>
-              <dt><kbd>Q</kbd> <kbd>E</kbd></dt><dd>Gebirge: zur Hangkante / in die Talmitte</dd>
-              <dt>Im Kreis: <kbd>←</kbd> <kbd>→</kbd></dt><dd>Selbst zentrieren: Kurvenschieber (enger, aufmachen, Richtung wechseln)</dd>
-              <dt><kbd>Enter</kbd></dt><dd>Starten / Neustart</dd>
-              <dt><kbd>M</kbd></dt><dd>MacCready-Wert</dd>
-              <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>S</kbd> <kbd>Z</kbd></dt><dd>Thermik, Tipps, Ton, Zoom</dd>
-              <dt><kbd>P</kbd></dt><dd>Pause</dd>
+              <dt><kbd>Leertaste</kbd> halten</dt>
+              <dd>Kreisen</dd>
+              <dt><kbd>↑</kbd> <kbd>↓</kbd></dt>
+              <dd>Beschleuniger</dd>
+              <dt><kbd>←</kbd> <kbd>→</kbd></dt>
+              <dd>Wenden: zurück / wieder auf Kurs</dd>
+              <dt><kbd>Q</kbd> <kbd>E</kbd></dt>
+              <dd>Gebirge: zur Hangkante / in die Talmitte</dd>
+              <dt>Im Kreis: <kbd>←</kbd> <kbd>→</kbd></dt>
+              <dd>Selbst zentrieren: Kurvenschieber (enger, aufmachen, Richtung wechseln)</dd>
+              <dt><kbd>Enter</kbd></dt>
+              <dd>Starten / Neustart</dd>
+              <dt><kbd>M</kbd></dt>
+              <dd>MacCready-Wert</dd>
+              <dt><kbd>T</kbd> <kbd>C</kbd> <kbd>S</kbd> <kbd>Z</kbd></dt>
+              <dd>Thermik, Tipps, Ton, Zoom</dd>
+              <dt><kbd>P</kbd></dt>
+              <dd>Pause</dd>
             </dl>
-            <p class="note">Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger. Beim selbst Zentrieren mit dem Kreis-Daumen waagrecht ziehen, um die Kurve zu steuern.</p>
+            <p class="note">
+              Am Handy: linke Hälfte halten zum Kreisen, rechts nach oben oder unten wischen für den Beschleuniger. Beim selbst Zentrieren
+              mit dem Kreis-Daumen waagrecht ziehen, um die Kurve zu steuern.
+            </p>
           </div>
           <div>
             <h3>Taktik</h3>
@@ -133,16 +164,23 @@
               <li>Kreise erst, wenn das Vario Steigen zeigt. Nahe am Kern wirst du automatisch zentriert.</li>
               <li>Wachsende Wolken tragen, zerfallende kaum noch. Kreisende Vögel zeigen Thermik an.</li>
               <li>Wind versetzt die Bärte: Auf deiner Höhe liegt das Steigen luvseitig der Wolke. Starker Wind zerreisst die Thermik.</li>
-              <li>Thermik wächst von unten nach oben und wird dabei breiter. Erst wenn sie die Basis erreicht, entsteht die Wolke. Unter der Wolke wird es meist noch stärker.</li>
+              <li>
+                Thermik wächst von unten nach oben und wird dabei breiter. Erst wenn sie die Basis erreicht, entsteht die Wolke. Unter der
+                Wolke wird es meist noch stärker.
+              </li>
               <li>Nahe beieinander stehende Bärte können zu einem grossen, kräftigen Bart verschmelzen.</li>
               <li>Der weisse Pfeil am Beschleuniger zeigt die Sollfahrt für deinen MC-Wert.</li>
               <li>Mehr Beschleuniger heisst schneller, aber auch mehr Sinken. Beim Kreisen wirkt er nicht.</li>
               <li>Einen Bart verpasst? Wenden kostet Zeit und Höhe, kann aber die Landung verhindern.</li>
-              <li>Im Gebirge steht die beste Thermik an der sonnigen Hangkante. Die Talmitte ist sicherer, trägt aber schlechter. Ab Mittag schiebt dort der Talwind.</li>
+              <li>
+                Im Gebirge steht die beste Thermik an der sonnigen Hangkante. Die Talmitte ist sicherer, trägt aber schlechter. Ab Mittag
+                schiebt dort der Talwind.
+              </li>
             </ul>
           </div>
         </div>
       </details>
+      <p class="appver" id="appVersion" hidden></p>
     </div>
   </section>
 
@@ -157,19 +195,18 @@
       </div>
       <div class="field">
         <span class="flbl">Gelände</span>
-        <div class="seg" id="sTerrain">
-          <button data-v="flat">Flachland</button><button data-v="mountain">Gebirge</button>
-        </div>
+        <div class="seg" id="sTerrain"><button data-v="flat">Flachland</button><button data-v="mountain">Gebirge</button></div>
       </div>
       <div class="field">
         <span class="flbl">Wolkenbild</span>
         <div class="seg" id="sClouds">
-          <button data-v="cumulus">Cumulus</button><button data-v="streets">Wolkenstrassen</button><button data-v="blue">Blauthermik</button>
+          <button data-v="cumulus">Cumulus</button><button data-v="streets">Wolkenstrassen</button
+          ><button data-v="blue">Blauthermik</button>
         </div>
       </div>
       <div class="field">
         <label class="flbl" for="sWind">Wind <b id="windVal">0 km/h</b></label>
-        <input type="range" id="sWind" min="-25" max="25" step="5" value="0">
+        <input type="range" id="sWind" min="-25" max="25" step="5" value="0" />
         <div class="rangelbl"><span>Gegenwind</span><span>Rückenwind</span></div>
       </div>
       <div class="field">
@@ -183,12 +220,16 @@
         <div class="seg" id="sCenter">
           <button data-v="auto">Automatisch</button><button data-v="assist">Assistiert</button><button data-v="pro">Profi</button>
         </div>
-        <p class="hint">Assistiert und Profi: Du steuerst die Kurve selbst. Beim Kreisen regeln ← / → den Kurvenschieber stufenlos, von enger Linkskurve über geradeaus bis zur Rechtskurve (am Handy mit dem Kreis-Daumen waagrecht ziehen). Gilt auch für die Tagesaufgabe.</p>
+        <p class="hint">
+          Assistiert und Profi: Du steuerst die Kurve selbst. Beim Kreisen regeln ← / → den Kurvenschieber stufenlos, von enger Linkskurve
+          über geradeaus bis zur Rechtskurve (am Handy mit dem Kreis-Daumen waagrecht ziehen). Gilt auch für die Tagesaufgabe.
+        </p>
       </div>
       <div class="field">
         <span class="flbl">Gegner</span>
         <div class="seg" id="sBots">
-          <button data-v="0">Keine</button><button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button><button data-v="7">7</button>
+          <button data-v="0">Keine</button><button data-v="1">1</button><button data-v="3">3</button><button data-v="5">5</button
+          ><button data-v="7">7</button>
         </div>
       </div>
       <div class="field">
@@ -251,7 +292,10 @@
           <ol id="rBoard"></ol>
         </div>
       </div>
-      <h3 class="baro-h">Barogramm deines besten Flugs <span class="legend"><i class="lg-c"></i>Kreisen <i class="lg-g"></i>Gleiten <i class="lg-o"></i>Gegner</span></h3>
+      <h3 class="baro-h">
+        Barogramm deines besten Flugs
+        <span class="legend"><i class="lg-c"></i>Kreisen <i class="lg-g"></i>Gleiten <i class="lg-o"></i>Gegner</span>
+      </h3>
       <canvas id="baro" class="baro"></canvas>
       <div id="rHistory" class="history"></div>
       <div class="sheet-actions">

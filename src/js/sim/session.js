@@ -39,26 +39,38 @@ export class Session {
     for (let i = 0; i < n && i < BOT_ROSTER.length; i++) {
       const b = BOT_ROSTER[i];
       const launchAt = this.tStart + (b.skill > 0.8 ? 1200 + 900 * rng() : 300 + 1500 * rng());
-      this.add(new Pilot({
-        id: 'bot' + i, name: b.name, tag: b.tag, color: b.color, glider,
-        brain: new Brain({ mc: b.mc, skill: b.skill, launchAt }),
-        autoOffset: 0.55 - 0.45 * b.skill,
-      })).tag = b.tag;
+      this.add(
+        new Pilot({
+          id: 'bot' + i,
+          name: b.name,
+          tag: b.tag,
+          color: b.color,
+          glider,
+          brain: new Brain({ mc: b.mc, skill: b.skill, launchAt }),
+          autoOffset: 0.55 - 0.45 * b.skill,
+        }),
+      ).tag = b.tag;
     }
   }
 
-  launch(p) { if (p.state === 'ready' && !this.ended) p.launch(this.world, this.t); }
+  launch(p) {
+    if (p.state === 'ready' && !this.ended) p.launch(this.world, this.t);
+  }
 
   restart(p) {
     if (p.state !== 'landed' || this.ended) return;
     p.x = this.world.launchX;
     p.z = this.world.launchGround;
     p.trail = [];
-    if (this.penalty > 0) { p.state = 'walking'; p.walkUntil = this.t + this.penalty; }
-    else p.state = 'ready';
+    if (this.penalty > 0) {
+      p.state = 'walking';
+      p.walkUntil = this.t + this.penalty;
+    } else p.state = 'ready';
   }
 
-  remaining() { return this.tEnd - this.t; }
+  remaining() {
+    return this.tEnd - this.t;
+  }
 
   step(simDt) {
     let left = simDt;
@@ -79,7 +91,9 @@ export class Session {
     this.world.ensure(-6000, maxX + 30000);
   }
 
-  update(realDt) { this.step(realDt * this.rate); }
+  update(realDt) {
+    this.step(realDt * this.rate);
+  }
 
   end() {
     if (this.ended) return;
@@ -87,5 +101,7 @@ export class Session {
     for (const p of this.pilots) p.finish(this.t);
   }
 
-  standings() { return [...this.pilots].sort((a, b) => b.score() - a.score()); }
+  standings() {
+    return [...this.pilots].sort((a, b) => b.score() - a.score());
+  }
 }

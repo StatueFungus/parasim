@@ -1,6 +1,6 @@
 import { GLIDERS, speedFor, sinkFor, circleSink, circleSinkR, bestBar, R_DEFAULT } from './gliders.js';
 
-export const TURN_TIME = 7;      // Flugsekunden für eine 180°-Wende
+export const TURN_TIME = 7; // Flugsekunden für eine 180°-Wende
 // Kurvenschieber beim Kreisen: steer = −1 (enge Rechtskurve) … 0 (geradeaus) … +1 (enge Linkskurve).
 // Radius = R_TIGHT / |steer|; zu Beginn eine moderate Kurve von etwa 40 m.
 export const R_TIGHT = 25;
@@ -10,7 +10,7 @@ export const STEER_START = 0.62;
 // Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo wieder der Fluggeschwindigkeit.
 export const CIRCLE_PACE = 0.4;
 export const circlePace = (steer) => CIRCLE_PACE + (1 - CIRCLE_PACE) * (1 - Math.min(1, Math.abs(steer) / 0.5)) ** 2;
-export const LANE_TIME = 55;     // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
+export const LANE_TIME = 55; // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
 
 // state: ready (am Startplatz) | flying | landed | walking (Aufstieg nach Aussenlandung) | done
@@ -23,25 +23,36 @@ export class Pilot {
     this.brain = o.brain || null;
     this.isPlayer = !!o.isPlayer;
     this.state = 'ready';
-    this.x = 0; this.z = 0; this.launchX = 0;
+    this.x = 0;
+    this.z = 0;
+    this.launchX = 0;
     this.v = this.glider.vTrim;
     this.bar = 0;
     this.mc = o.mc ?? 1;
     this.circling = false;
     this.wantCircle = false;
-    this.dir = 1;          // +1 auf Kurs, −1 zurück
-    this.turnLeft = 0;     // verbleibende Wendezeit
-    this.lane = 0;         // Ziel-Linie
-    this.l = 0;            // tatsächliche seitliche Position 0..1
-    this.vz = 0; this.vario = 0; this.air = 0; this.netto = 0; this.phase = 0;
+    this.dir = 1; // +1 auf Kurs, −1 zurück
+    this.turnLeft = 0; // verbleibende Wendezeit
+    this.lane = 0; // Ziel-Linie
+    this.l = 0; // tatsächliche seitliche Position 0..1
+    this.vz = 0;
+    this.vario = 0;
+    this.air = 0;
+    this.netto = 0;
+    this.phase = 0;
     // Kreisen: Kurs heading (0 = Flugrichtung +x, positiv = nach links), Schieber steer, Radius R;
     // y ist der seitliche Abstand zur Bartachse, (cx, cy) der momentane Kreismittelpunkt.
     // centering: 'auto' | 'assist' | 'pro'; autoOffset: bis auf welchen Bruchteil des Bartradius die Automatik zentriert.
     this.centering = o.centering || 'auto';
     this.autoOffset = o.autoOffset ?? 0.5;
-    this.heading = 0; this.steer = STEER_START; this.lastSteerSign = 1;
+    this.heading = 0;
+    this.steer = STEER_START;
+    this.lastSteerSign = 1;
     this.R = R_DEFAULT;
-    this.cx = 0; this.cy = 0; this.y = 0; this.drift = 0;
+    this.cx = 0;
+    this.cy = 0;
+    this.y = 0;
+    this.drift = 0;
     this.best = 0;
     this.bestFlight = null;
     this.flights = [];
@@ -50,13 +61,23 @@ export class Pilot {
     this.flight = null;
   }
 
-  get dist() { return Math.max(0, this.x - this.launchX); }
-  get turning() { return this.turnLeft > 0; }
-  get manual() { return this.centering !== 'auto'; }
+  get dist() {
+    return Math.max(0, this.x - this.launchX);
+  }
+  get turning() {
+    return this.turnLeft > 0;
+  }
+  get manual() {
+    return this.centering !== 'auto';
+  }
 
-  setSteer(v) { this.steer = Math.max(-1, Math.min(1, v)); }
+  setSteer(v) {
+    this.steer = Math.max(-1, Math.min(1, v));
+  }
 
-  score() { return Math.max(this.best, this.state === 'flying' ? this.dist : 0); }
+  score() {
+    return Math.max(this.best, this.state === 'flying' ? this.dist : 0);
+  }
 
   // Wende einleiten: dir = +1 (auf Kurs) oder −1 (zurück)
   turn(dir) {
@@ -78,16 +99,29 @@ export class Pilot {
     this.z = world.launchZ;
     this.v = this.glider.vTrim;
     this.circling = this.wantCircle = false;
-    this.dir = 1; this.turnLeft = 0;
-    this.lane = 0; this.l = 0;
+    this.dir = 1;
+    this.turnLeft = 0;
+    this.lane = 0;
+    this.l = 0;
     this.vz = this.vario = 0;
     this.y = 0;
     this.netto = world.lift(this.x, this.z, t);
     this.trail = [];
     this.flight = {
-      launchT: t, track: [{ t, x: this.x, z: this.z, c: 0, l: 0 }],
-      circT: 0, glideT: 0, gain: 0, thermals: 0, maxZ: this.z, best30: 0, turns: 0, laneT: [0, 0],
-      circStart: null, lastSample: t, lastTrail: t, dist: 0,
+      launchT: t,
+      track: [{ t, x: this.x, z: this.z, c: 0, l: 0 }],
+      circT: 0,
+      glideT: 0,
+      gain: 0,
+      thermals: 0,
+      maxZ: this.z,
+      best30: 0,
+      turns: 0,
+      laneT: [0, 0],
+      circStart: null,
+      lastSample: t,
+      lastTrail: t,
+      dist: 0,
     };
   }
 
@@ -99,10 +133,13 @@ export class Pilot {
     const wind = world.windAt(t, this.l, this.z - world.groundAt(this.x, this.l));
     this.air = air;
     this.netto += (air - this.netto) * Math.min(1, dt / 4);
-    this.drift += wind * dt;   // Versatz der Luftmasse, damit der Thermik-Assistent im mitfliegenden Bezugssystem zeichnen kann
+    this.drift += wind * dt; // Versatz der Luftmasse, damit der Thermik-Assistent im mitfliegenden Bezugssystem zeichnen kann
 
     if (this.wantCircle && !this.circling && !this.turning) this.startCircle(world, t);
-    else if (this.circling && !this.wantCircle) { this.circling = false; this.endCircle(t); }
+    else if (this.circling && !this.wantCircle) {
+      this.circling = false;
+      this.endCircle(t);
+    }
 
     let vz;
     if (this.circling) {
@@ -111,7 +148,7 @@ export class Pilot {
       const pace = circlePace(this.steer);
       const vms = (this.v / 3.6) * pace;
       this.R = a > 0.02 ? R_TIGHT / a : Infinity;
-      this.heading += (this.steer * vms / R_TIGHT) * dt;
+      this.heading += ((this.steer * vms) / R_TIGHT) * dt;
       // Auch das Herausdriften relativ zum Bart läuft im Kreistempo: Man treibt mit dem Kern mit,
       // nur der Unterschied zwischen Wind und Kernversatz wirkt verlangsamt.
       const near = world.nearestCore(this.x, this.z, t, Math.round(this.l), this.y);
@@ -145,7 +182,7 @@ export class Pilot {
       // Beim Linienwechsel fliegt man schräg über das Tal und kommt langsamer voran.
       const crossing = Math.abs(this.lane - this.l) > 0.001;
       const along = crossing ? 0.6 : 1;
-      this.x += (this.dir * along * this.v / 3.6 + wind) * dt;
+      this.x += ((this.dir * along * this.v) / 3.6 + wind) * dt;
       if (crossing) {
         const step = dt / LANE_TIME;
         this.l += Math.sign(this.lane - this.l) * Math.min(step, Math.abs(this.lane - this.l));
@@ -173,7 +210,10 @@ export class Pilot {
     }
 
     const gz = world.groundAt(this.x, this.l);
-    if (this.z <= gz) { this.z = gz; this.land(t); }
+    if (this.z <= gz) {
+      this.z = gz;
+      this.land(t);
+    }
   }
 
   // Einkreisen aus dem Geradeausflug in der aktuellen Flugrichtung, mit moderater Kurve
@@ -195,8 +235,12 @@ export class Pilot {
     const target = this.autoOffset * c.r;
     if (d <= target || d > 1.7 * c.r + this.R) return;
     const m = Math.min(d - target, 3.2 * this.glider.center * dt);
-    const mx = -(c.dx / d) * m, my = -(c.dy / d) * m;
-    this.x += mx; this.y += my; this.cx += mx; this.cy += my;
+    const mx = -(c.dx / d) * m,
+      my = -(c.dy / d) * m;
+    this.x += mx;
+    this.y += my;
+    this.cx += mx;
+    this.cy += my;
   }
 
   // Ausleiten: Man fliegt in die Richtung weiter, in die man gerade schaut (beim selbst Zentrieren).
@@ -208,7 +252,8 @@ export class Pilot {
     this.y = 0;
     const f = this.flight;
     if (!f.circStart) return;
-    const dz = this.z - f.circStart.z, dtc = t - f.circStart.t;
+    const dz = this.z - f.circStart.z,
+      dtc = t - f.circStart.t;
     if (dz > 0) f.gain += dz;
     if (dz >= 200) f.thermals++;
     if (dtc >= 30 && dz / dtc > f.best30) f.best30 = dz / dtc;
@@ -216,13 +261,19 @@ export class Pilot {
   }
 
   closeFlight(t) {
-    if (this.circling) { this.circling = this.wantCircle = false; this.endCircle(t); }
+    if (this.circling) {
+      this.circling = this.wantCircle = false;
+      this.endCircle(t);
+    }
     const f = this.flight;
     f.track.push({ t, x: this.x, z: this.z, c: 0, l: this.l });
     f.dist = this.dist;
     f.endT = t;
     this.flights.push(f);
-    if (f.dist >= this.best) { this.best = f.dist; this.bestFlight = f; }
+    if (f.dist >= this.best) {
+      this.best = f.dist;
+      this.bestFlight = f;
+    }
   }
 
   land(t) {
@@ -253,12 +304,15 @@ export class Brain {
     this.circT0 = 0;
     this.noCircleUntil = 0;
     this.laneLock = 0;
-    this.missed = null;     // { x, t } Steigen, das wir überflogen haben
+    this.missed = null; // { x, t } Steigen, das wir überflogen haben
     this.returning = false;
   }
 
   think(p, world, t, dt, session) {
-    if (p.state === 'ready') { if (t >= this.launchAt) session.launch(p); return; }
+    if (p.state === 'ready') {
+      if (t >= this.launchAt) session.launch(p);
+      return;
+    }
     if (p.state === 'landed') {
       if (this.restarts < this.maxRestarts && session.remaining() > session.penalty + 1500) {
         this.restarts++;
@@ -298,7 +352,10 @@ export class Brain {
     }
     if (p.turning) return;
     // Nach dem Bart (oder wenn die Rückkehr abgebrochen ist) wieder auf Kurs gehen.
-    if (p.dir === -1 && !this.returning) { p.turn(1); return; }
+    if (p.dir === -1 && !this.returning) {
+      p.turn(1);
+      return;
+    }
 
     p.bar = bestBar(g, mc, p.netto * this.skill, world.windAt(t, p.l, agl) * p.dir);
     if (this.skill < 0.5) p.bar = Math.min(p.bar, 0.3);
@@ -318,8 +375,10 @@ export class Brain {
     // Zurück zum Bart: nur gute Piloten, nur wenn es tief wird und das Steigen nah genug hinter uns liegt.
     if (this.skill >= 0.75 && p.dir === 1 && this.missed && agl > 200 && agl < 500 && p.air < 0) {
       const back = p.x - this.missed.x;
-      if (t - this.missed.t < 90 && back > 200 && back < 650) { p.turn(-1); this.returning = true; }
-      else if (t - this.missed.t >= 120) this.missed = null;
+      if (t - this.missed.t < 90 && back > 200 && back < 650) {
+        p.turn(-1);
+        this.returning = true;
+      } else if (t - this.missed.t >= 120) this.missed = null;
     }
     if (this.returning && p.dir === -1 && this.missed && p.x < this.missed.x - 350) {
       // Den Bart nicht wiedergefunden: wieder auf Kurs.
@@ -336,6 +395,9 @@ export class Brain {
     if (this.skill < 0.5) want = 1;
     else if (overRidge > (this.skill > 0.8 ? 280 : 450)) want = 0;
     else if (overRidge < 150) want = 1;
-    if (want !== p.lane) { p.setLane(want, world); this.laneLock = t + 120; }
+    if (want !== p.lane) {
+      p.setLane(want, world);
+      this.laneLock = t + 120;
+    }
   }
 }

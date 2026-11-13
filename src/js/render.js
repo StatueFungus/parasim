@@ -19,15 +19,23 @@ export class Renderer {
   resize() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.dpr = dpr;
-    this.W = this.cv.clientWidth; this.H = this.cv.clientHeight;
-    this.cv.width = Math.round(this.W * dpr); this.cv.height = Math.round(this.H * dpr);
-    this.mW = this.mini.clientWidth; this.mH = this.mini.clientHeight;
-    this.mini.width = Math.round(this.mW * dpr); this.mini.height = Math.round(this.mH * dpr);
+    this.W = this.cv.clientWidth;
+    this.H = this.cv.clientHeight;
+    this.cv.width = Math.round(this.W * dpr);
+    this.cv.height = Math.round(this.H * dpr);
+    this.mW = this.mini.clientWidth;
+    this.mH = this.mini.clientHeight;
+    this.mini.width = Math.round(this.mW * dpr);
+    this.mini.height = Math.round(this.mH * dpr);
   }
 
-  get viewW() { return ZOOMS[this.zoom] * Math.max(0.6, (this.W / Math.max(1, this.H)) / 1.78); }
+  get viewW() {
+    return ZOOMS[this.zoom] * Math.max(0.6, this.W / Math.max(1, this.H) / 1.78);
+  }
 
-  cycleZoom() { this.zoom = (this.zoom + 1) % ZOOMS.length; }
+  cycleZoom() {
+    this.zoom = (this.zoom + 1) % ZOOMS.length;
+  }
 
   // ---------- Kamera ----------
   updateCamera(s, focus, dt) {
@@ -40,8 +48,12 @@ export class Renderer {
     const zMax = Math.max(w.baseMSL(s.t) + 450, (focus?.z ?? 0) + 250);
     const zMin = gmin - 0.24 * (zMax - gmin);
     const target = { x: fx, zMin, zMax };
-    if (!this.cam || dt === 0) { this.cam = { ...target }; return; }
-    const k = Math.min(1, dt * 3), kz = Math.min(1, dt * 1.2);
+    if (!this.cam || dt === 0) {
+      this.cam = { ...target };
+      return;
+    }
+    const k = Math.min(1, dt * 3),
+      kz = Math.min(1, dt * 1.2);
     this.cam.x += (target.x - this.cam.x) * k;
     if (Math.abs(target.x - this.cam.x) > vw) this.cam.x = target.x;
     this.cam.zMin += (target.zMin - this.cam.zMin) * kz;
@@ -55,8 +67,12 @@ export class Renderer {
     this.ky = (this.H - TOP_PAD) / (this.cam.zMax - this.cam.zMin);
   }
 
-  sx(x) { return (x - this.left) * this.kx; }
-  sy(z) { return this.H - (z - this.cam.zMin) * this.ky; }
+  sx(x) {
+    return (x - this.left) * this.kx;
+  }
+  sy(z) {
+    return this.H - (z - this.cam.zMin) * this.ky;
+  }
 
   // ---------- Hauptzeichnung ----------
   draw(s, o) {
@@ -111,9 +127,16 @@ export class Renderer {
 
   drawFar(w) {
     const ctx = this.ctx;
-    const layers = w.terrain === 'mountain'
-      ? [{ p: 0.12, h: 0.42, c: 'rgba(120,150,190,0.45)', sc: 1600 }, { p: 0.25, h: 0.3, c: 'rgba(95,128,170,0.5)', sc: 900 }]
-      : [{ p: 0.1, h: 0.2, c: 'rgba(130,160,198,0.4)', sc: 1300 }, { p: 0.22, h: 0.1, c: 'rgba(110,145,120,0.35)', sc: 700 }];
+    const layers =
+      w.terrain === 'mountain'
+        ? [
+            { p: 0.12, h: 0.42, c: 'rgba(120,150,190,0.45)', sc: 1600 },
+            { p: 0.25, h: 0.3, c: 'rgba(95,128,170,0.5)', sc: 900 },
+          ]
+        : [
+            { p: 0.1, h: 0.2, c: 'rgba(130,160,198,0.4)', sc: 1300 },
+            { p: 0.22, h: 0.1, c: 'rgba(110,145,120,0.35)', sc: 700 },
+          ];
     const horizon = this.sy(w.ground(this.cam.x)) - 10;
     for (const L of layers) {
       ctx.fillStyle = L.c;
@@ -132,7 +155,8 @@ export class Renderer {
   // Thermiksäule im Training: wächst als Blase vom Boden nach oben, reisst beim Zerfall unten ab,
   // wird mit der Höhe breiter und steht im Wind schräg. Unter der Wolke etwas kräftiger gefärbt.
   drawThermals(s, lane) {
-    const ctx = this.ctx, w = s.world;
+    const ctx = this.ctx,
+      w = s.world;
     const base = w.baseMSL(s.t);
     ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
@@ -140,10 +164,12 @@ export class Renderer {
       if ((th.lane || 0) !== lane) continue;
       const st = w.strength(th, s.t);
       if (st < 0.15) continue;
-      const zTop = Math.min(w.topZ(th, s.t), base), zBot = Math.max(th.gz, w.bottomZ(th, s.t));
+      const zTop = Math.min(w.topZ(th, s.t), base),
+        zBot = Math.max(th.gz, w.bottomZ(th, s.t));
       if (zTop - zBot < 20) continue;
       const hwMax = w.radiusAt(th, zTop, s.t) * 1.6 * this.kx;
-      const xBot = this.sx(w.coreX(th, zBot, s.t)), xTop = this.sx(w.coreX(th, zTop, s.t));
+      const xBot = this.sx(w.coreX(th, zBot, s.t)),
+        xTop = this.sx(w.coreX(th, zTop, s.t));
       if (Math.max(xBot, xTop) + hwMax < 0 || Math.min(xBot, xTop) - hwMax > this.W) continue;
       const a0 = Math.min(0.42, st / 8) * (w.laneCount > 1 && lane === 0 ? 0.75 : 1);
       const rgb = lane === 0 ? '255,140,40' : '255,200,60';
@@ -151,23 +177,27 @@ export class Renderer {
       const slices = 28;
       const dz = (zTop - zBot) / slices;
       for (let i = 0; i < slices; i++) {
-        const z0 = zBot + i * dz, zm = z0 + dz / 2;
+        const z0 = zBot + i * dz,
+          zm = z0 + dz / 2;
         const cx = this.sx(w.coreX(th, zm, s.t));
         const hw = w.radiusAt(th, zm, s.t) * 1.6 * this.kx;
         const boost = w.clouds !== 'blue' ? 1 + 0.15 * Math.min(1, Math.max(0, (zm - (base - 450)) / 410)) : 1;
-        const fade = i === slices - 1 && zTop < base - 20 ? 0.5 : 1;   // Blasenoberkante weich
+        const fade = i === slices - 1 && zTop < base - 20 ? 0.5 : 1; // Blasenoberkante weich
         const a = Math.min(0.55, a0 * boost) * fade;
         const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
         g.addColorStop(0, `rgba(${rgb},0)`);
         g.addColorStop(0.5, `rgba(${rgb},${a})`);
         g.addColorStop(1, `rgba(${rgb},0)`);
         ctx.fillStyle = g;
-        const y1 = this.sy(z0), y0 = this.sy(z0 + dz);
+        const y1 = this.sy(z0),
+          y0 = this.sy(z0 + dz);
         ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
       }
       // Auslösepunkt am Boden
       ctx.fillStyle = `rgba(${rgb},0.8)`;
-      ctx.beginPath(); ctx.arc(this.sx(th.sx), this.sy(th.gz) - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(this.sx(th.sx), this.sy(th.gz) - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = 'rgba(120,50,0,0.75)';
       ctx.fillText(st.toFixed(1), xTop, this.sy(zTop) + 16 + lane * 13);
     }
@@ -191,7 +221,8 @@ export class Renderer {
   }
 
   drawClouds(s, base, lane) {
-    const ctx = this.ctx, w = s.world;
+    const ctx = this.ctx,
+      w = s.world;
     const by = this.sy(base);
     const far = w.laneCount > 1 && lane === 0;
     for (const th of w.thermals) {
@@ -230,11 +261,15 @@ export class Renderer {
   }
 
   drawBaseLine(base) {
-    const ctx = this.ctx, y = this.sy(base);
+    const ctx = this.ctx,
+      y = this.sy(base);
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.setLineDash([4, 6]);
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.W, y); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(this.W, y);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -290,30 +325,43 @@ export class Renderer {
 
   drawPlumb(p, w) {
     const ctx = this.ctx;
-    const x = this.sx(p.x), y0 = this.sy(p.z) + 6, y1 = this.sy(w.groundAt(p.x, p.l));
+    const x = this.sx(p.x),
+      y0 = this.sy(p.z) + 6,
+      y1 = this.sy(w.groundAt(p.x, p.l));
     if (y1 - y0 < 8) return;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.35)';
     ctx.setLineDash([2, 5]);
-    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y1);
+    ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.beginPath(); ctx.arc(x, y1, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
   drawMarks(s, o) {
-    const ctx = this.ctx, w = s.world;
+    const ctx = this.ctx,
+      w = s.world;
     const front = w.laneCount - 1;
     // Kilometermarken
     ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    const km0 = Math.ceil(this.left / 1000), km1 = Math.floor((this.left + this.viewW) / 1000);
+    const km0 = Math.ceil(this.left / 1000),
+      km1 = Math.floor((this.left + this.viewW) / 1000);
     const every = this.zoom === 2 ? 5 : this.zoom === 1 ? 2 : 1;
     for (let k = km0; k <= km1; k++) {
-      const x = this.sx(k * 1000), y = this.sy(w.groundAt(k * 1000, front));
+      const x = this.sx(k * 1000),
+        y = this.sy(w.groundAt(k * 1000, front));
       ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - (k % 5 ? 5 : 10)); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y - (k % 5 ? 5 : 10));
+      ctx.stroke();
       if (k > 0 && k % every === 0) {
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.fillText(k + ' km', x, y + 15);
@@ -326,13 +374,22 @@ export class Renderer {
   }
 
   flag(x, z, color, label) {
-    const ctx = this.ctx, px = this.sx(x), py = this.sy(z);
+    const ctx = this.ctx,
+      px = this.sx(x),
+      py = this.sy(z);
     if (px < -40 || px > this.W + 40) return;
     ctx.strokeStyle = 'rgba(20,30,40,0.8)';
     ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 26); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px, py - 26);
+    ctx.stroke();
     ctx.fillStyle = color;
-    ctx.beginPath(); ctx.moveTo(px, py - 26); ctx.lineTo(px + 13, py - 22); ctx.lineTo(px, py - 18); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px, py - 26);
+    ctx.lineTo(px + 13, py - 22);
+    ctx.lineTo(px, py - 18);
+    ctx.fill();
     ctx.font = '600 10px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
@@ -340,13 +397,16 @@ export class Renderer {
   }
 
   drawBirds(s) {
-    const ctx = this.ctx, w = s.world, base = w.baseMSL(s.t);
+    const ctx = this.ctx,
+      w = s.world,
+      base = w.baseMSL(s.t);
     ctx.strokeStyle = 'rgba(25,30,40,0.85)';
     ctx.lineWidth = 1.3;
     for (const th of w.thermals) {
       if (!th.birds || w.strength(th, s.t) < 1) continue;
       // Feste Kreisbahnen, unabhängig vom Wachstum der Säule; sichtbar nur, wo der Bart gerade trägt.
-      const lo = Math.max(th.gz + 120, w.bottomZ(th, s.t)), hi = Math.min(base - 200, w.topZ(th, s.t));
+      const lo = Math.max(th.gz + 120, w.bottomZ(th, s.t)),
+        hi = Math.min(base - 200, w.topZ(th, s.t));
       for (let k = 0; k < 2; k++) {
         // Auf und ab wie ein Dreieck, damit nichts springt
         const ph = ((s.t * 0.7 + k * 450 + th.id * 37) % 2200) / 1100;
@@ -355,23 +415,29 @@ export class Renderer {
         const cx = w.coreX(th, z, s.t);
         if (this.sx(cx) < -50 || this.sx(cx) > this.W + 50) continue;
         const ang = s.t * 0.12 + k * 3.1;
-        const x = this.sx(cx + Math.cos(ang) * 90), y = this.sy(z) + Math.sin(ang) * 3;
+        const x = this.sx(cx + Math.cos(ang) * 90),
+          y = this.sy(z) + Math.sin(ang) * 3;
         const f = 3 + Math.sin(s.t * 0.5 + k) * 1.2;
         ctx.beginPath();
-        ctx.moveTo(x - 5, y - f * 0.6); ctx.quadraticCurveTo(x - 2, y - f, x, y); ctx.quadraticCurveTo(x + 2, y - f, x + 5, y - f * 0.6);
+        ctx.moveTo(x - 5, y - f * 0.6);
+        ctx.quadraticCurveTo(x - 2, y - f, x, y);
+        ctx.quadraticCurveTo(x + 2, y - f, x + 5, y - f * 0.6);
         ctx.stroke();
       }
     }
   }
 
   drawTrail(p) {
-    const ctx = this.ctx, tr = p.trail;
+    const ctx = this.ctx,
+      tr = p.trail;
     if (tr.length < 2) return;
     ctx.lineWidth = 2;
     for (let i = 1; i < tr.length; i++) {
-      const a = tr[i - 1], b = tr[i];
+      const a = tr[i - 1],
+        b = tr[i];
       const fade = 0.25 + 0.65 * (i / tr.length);
-      ctx.strokeStyle = b.v > 0.2 ? `rgba(255,170,40,${fade})` : b.v < -1.5 ? `rgba(70,150,255,${fade * 0.8})` : `rgba(255,255,255,${fade * 0.6})`;
+      ctx.strokeStyle =
+        b.v > 0.2 ? `rgba(255,170,40,${fade})` : b.v < -1.5 ? `rgba(70,150,255,${fade * 0.8})` : `rgba(255,255,255,${fade * 0.6})`;
       ctx.beginPath();
       ctx.moveTo(this.sx(a.x), this.sy(a.z));
       ctx.lineTo(this.sx(b.x), this.sy(b.z));
@@ -383,7 +449,9 @@ export class Renderer {
     const pos = g.at(t);
     if (!pos) return;
     this.ctx.globalAlpha = 0.45;
-    this.glider(this.sx(pos.x), this.sy(pos.z), '#b9c7ff', pos.c ? t * 0.3 : null, 0, 'Rekordflug', false, { scale: this.laneScale(pos.l) });
+    this.glider(this.sx(pos.x), this.sy(pos.z), '#b9c7ff', pos.c ? t * 0.3 : null, 0, 'Rekordflug', false, {
+      scale: this.laneScale(pos.l),
+    });
     this.ctx.globalAlpha = 1;
   }
 
@@ -392,44 +460,61 @@ export class Renderer {
     if (p.state === 'flying') {
       // Wende als halbe Kreisbewegung darstellen
       const phase = p.circling ? p.phase : p.turning ? Math.PI / 2 + (1 - p.turnLeft / TURN_TIME) * Math.PI * p.dir : null;
-      this.glider(this.sx(p.x), this.sy(p.z), p.color, phase, p.bar, isFocus ? null : p.name, isFocus,
-        { scale: this.laneScale(p.l), dir: p.dir });
+      this.glider(this.sx(p.x), this.sy(p.z), p.color, phase, p.bar, isFocus ? null : p.name, isFocus, {
+        scale: this.laneScale(p.l),
+        dir: p.dir,
+      });
     } else {
-      const x = this.sx(p.x), y = this.sy(w.groundAt(p.x, p.l));
+      const x = this.sx(p.x),
+        y = this.sy(w.groundAt(p.x, p.l));
       if (x < -30 || x > this.W + 30) return;
       const ctx = this.ctx;
       ctx.fillStyle = p.color;
-      ctx.beginPath(); ctx.ellipse(x - 6, y - 2, 9, 3, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x - 6, y - 2, 9, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.fillStyle = '#1b2733';
       ctx.fillRect(x + 2, y - 9, 3, 9);
-      ctx.beginPath(); ctx.arc(x + 3.5, y - 11, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x + 3.5, y - 11, 2.4, 0, Math.PI * 2);
+      ctx.fill();
       if (!isFocus) this.label(x, y - 18, p.name, p.color);
     }
   }
 
   // Schirm von schräg hinten: im Geradeausflug volle Spannweite, im Kreis perspektivisch verkürzt und geneigt.
   // Piloten an der Hangkante sind weiter weg und erscheinen kleiner.
-  laneScale(l = 0) { return this.cam && this.lanes > 1 ? 0.78 + 0.22 * l : 1; }
+  laneScale(l = 0) {
+    return this.cam && this.lanes > 1 ? 0.78 + 0.22 * l : 1;
+  }
 
   glider(x, y, color, phase, bar, name, big, o = {}) {
     if (x < -40 || x > this.W + 40) return;
     const ctx = this.ctx;
     const S = (big ? 1.25 : 1) * (o.scale ?? 1);
     const span = 26 * S;
-    let wf = 1, tilt = 0;
-    if (phase != null) { wf = Math.max(0.2, Math.abs(Math.cos(phase))); tilt = Math.sin(phase) * 0.45; }
-    else tilt = (0.08 + bar * 0.12) * (o.dir ?? 1);
+    let wf = 1,
+      tilt;
+    if (phase != null) {
+      wf = Math.max(0.2, Math.abs(Math.cos(phase)));
+      tilt = Math.sin(phase) * 0.45;
+    } else tilt = (0.08 + bar * 0.12) * (o.dir ?? 1);
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(tilt);
-    const hw = (span / 2) * wf, top = -22 * S;
+    const hw = (span / 2) * wf,
+      top = -22 * S;
     ctx.strokeStyle = 'rgba(30,35,45,0.6)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(-hw, top + 4 * S); ctx.lineTo(0, -3 * S);
-    ctx.moveTo(hw, top + 4 * S); ctx.lineTo(0, -3 * S);
-    ctx.moveTo(-hw * 0.4, top - 1 * S); ctx.lineTo(0, -3 * S);
-    ctx.moveTo(hw * 0.4, top - 1 * S); ctx.lineTo(0, -3 * S);
+    ctx.moveTo(-hw, top + 4 * S);
+    ctx.lineTo(0, -3 * S);
+    ctx.moveTo(hw, top + 4 * S);
+    ctx.lineTo(0, -3 * S);
+    ctx.moveTo(-hw * 0.4, top - 1 * S);
+    ctx.lineTo(0, -3 * S);
+    ctx.moveTo(hw * 0.4, top - 1 * S);
+    ctx.lineTo(0, -3 * S);
     ctx.stroke();
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -438,7 +523,9 @@ export class Renderer {
     ctx.quadraticCurveTo(0, top - 3 * S, -hw, top + 5 * S);
     ctx.fill();
     ctx.fillStyle = '#18222c';
-    ctx.beginPath(); ctx.ellipse(0, 0, 3.2 * S, 4 * S, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 3.2 * S, 4 * S, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
     if (name) this.label(x, y - 32 * S, name, color);
   }
@@ -449,14 +536,19 @@ export class Renderer {
     ctx.textAlign = 'center';
     const w = ctx.measureText(text).width + 10;
     ctx.fillStyle = 'rgba(12,22,32,0.6)';
-    ctx.beginPath(); ctx.roundRect(x - w / 2, y - 11, w, 15, 4); ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(x - w / 2, y - 11, w, 15, 4);
+    ctx.fill();
     ctx.fillStyle = color;
     ctx.fillText(text, x, y);
   }
 
   // ---------- Übersichtsleiste ----------
   drawMini(s, o) {
-    const ctx = this.mctx, W = this.mW, H = this.mH, w = s.world;
+    const ctx = this.mctx,
+      W = this.mW,
+      H = this.mH,
+      w = s.world;
     if (!W || !H) return;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -465,17 +557,24 @@ export class Renderer {
     if (o.ghostBest) maxX = Math.max(maxX, o.ghostBest + 6000);
     const x0 = -2000;
     const mx = (x) => ((x - x0) / (maxX - x0)) * W;
-    const gTop = w.terrain === 'mountain' ? 2800 : 900, gBot = 350;
+    const gTop = w.terrain === 'mountain' ? 2800 : 900,
+      gBot = 350;
     const my = (z) => H - 4 - ((z - gBot) / (gTop - gBot)) * (H * 0.55);
     ctx.fillStyle = 'rgba(110,160,90,0.55)';
-    ctx.beginPath(); ctx.moveTo(0, H);
+    ctx.beginPath();
+    ctx.moveTo(0, H);
     for (let px = 0; px <= W; px += 4) ctx.lineTo(px, my(w.ground(x0 + (px / W) * (maxX - x0))));
-    ctx.lineTo(W, H); ctx.fill();
+    ctx.lineTo(W, H);
+    ctx.fill();
     // Wolken
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     for (const th of w.thermals) {
       const c = w.cloud(th, s.t);
-      if (c && c.alpha > 0.3) { ctx.beginPath(); ctx.arc(mx(c.x), 6, 1.5 + c.size * 2, 0, Math.PI * 2); ctx.fill(); }
+      if (c && c.alpha > 0.3) {
+        ctx.beginPath();
+        ctx.arc(mx(c.x), 6, 1.5 + c.size * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Kilometer
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
@@ -490,14 +589,23 @@ export class Renderer {
     }
     if (o.ghost) {
       const g = o.ghost.at(s.t);
-      if (g) { ctx.strokeStyle = '#b9c7ff'; ctx.beginPath(); ctx.arc(mx(g.x), H / 2, 3.5, 0, Math.PI * 2); ctx.stroke(); }
+      if (g) {
+        ctx.strokeStyle = '#b9c7ff';
+        ctx.beginPath();
+        ctx.arc(mx(g.x), H / 2, 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     for (const p of [...s.pilots].sort((a) => (a === o.focus ? 1 : -1))) {
       ctx.fillStyle = p.color;
       const r = p === o.focus ? 4.5 : 3;
       const y = p.state === 'flying' ? H * 0.42 : H * 0.72;
-      ctx.beginPath(); ctx.arc(mx(p.x), y, r, 0, Math.PI * 2); ctx.fill();
-      if (p.best > 0) { ctx.fillRect(mx(p.best + p.launchX) - 0.5, H * 0.6, 1, H * 0.3); }
+      ctx.beginPath();
+      ctx.arc(mx(p.x), y, r, 0, Math.PI * 2);
+      ctx.fill();
+      if (p.best > 0) {
+        ctx.fillRect(mx(p.best + p.launchX) - 0.5, H * 0.6, 1, H * 0.3);
+      }
     }
   }
 }
@@ -508,53 +616,80 @@ export class Renderer {
 export function drawAssist(cv, p, w, t, pts, showCore) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const S = cv.clientWidth;
-  if (cv.width !== Math.round(S * dpr)) { cv.width = cv.height = Math.round(S * dpr); }
+  if (cv.width !== Math.round(S * dpr)) {
+    cv.width = cv.height = Math.round(S * dpr);
+  }
   const ctx = cv.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, S, S);
-  const mid = S / 2, range = 120, k = (mid - 8) / range;
+  const mid = S / 2,
+    range = 120,
+    k = (mid - 8) / range;
 
   // Ansichtsmitte: Mittel der jüngsten Bahn, sanft nachgeführt
-  let mx = 0, my = 0, n = 0;
-  for (let i = pts.length - 1; i >= 0 && t - pts[i].t < 25; i--) { mx += pts[i].x; my += pts[i].y; n++; }
-  const tx = n ? mx / n : p.x - p.drift, ty = n ? my / n : p.y;
+  let mx = 0,
+    my = 0,
+    n = 0;
+  for (let i = pts.length - 1; i >= 0 && t - pts[i].t < 25; i--) {
+    mx += pts[i].x;
+    my += pts[i].y;
+    n++;
+  }
+  const tx = n ? mx / n : p.x - p.drift,
+    ty = n ? my / n : p.y;
   const v = (cv._view ??= { x: tx, y: ty });
-  if (Math.hypot(v.x - tx, v.y - ty) > 300) { v.x = tx; v.y = ty; }
-  v.x += (tx - v.x) * 0.08; v.y += (ty - v.y) * 0.08;
+  if (Math.hypot(v.x - tx, v.y - ty) > 300) {
+    v.x = tx;
+    v.y = ty;
+  }
+  v.x += (tx - v.x) * 0.08;
+  v.y += (ty - v.y) * 0.08;
   const X = (ax) => mid + (ax - v.x) * k;
   const Y = (ay) => mid - (ay - v.y) * k;
 
   ctx.save();
-  ctx.beginPath(); ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2); ctx.clip();
+  ctx.beginPath();
+  ctx.arc(mid, mid, mid - 1, 0, Math.PI * 2);
+  ctx.clip();
   // Vorschau der aktuellen Kurve
   if (Number.isFinite(p.R) && p.R < 200) {
     ctx.strokeStyle = 'rgba(255,255,255,0.14)';
     ctx.setLineDash([3, 4]);
-    ctx.beginPath(); ctx.arc(X(p.cx - p.drift), Y(p.cy), p.R * k, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(X(p.cx - p.drift), Y(p.cy), p.R * k, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.setLineDash([]);
   }
   // Gemessenes Steigen entlang der Flugbahn
   for (const q of pts) {
     if (q.v > 0) {
       ctx.fillStyle = `rgba(255,176,46,${Math.min(1, 0.3 + q.v / 3)})`;
-      ctx.beginPath(); ctx.arc(X(q.x), Y(q.y), 1.5 + Math.min(3, q.v), 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(X(q.x), Y(q.y), 1.5 + Math.min(3, q.v), 0, Math.PI * 2);
+      ctx.fill();
     } else {
       ctx.fillStyle = 'rgba(92,182,255,0.55)';
-      ctx.beginPath(); ctx.arc(X(q.x), Y(q.y), 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(X(q.x), Y(q.y), 1.4, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
   // Kern
   if (showCore) {
     const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y);
     if (c && Math.hypot(c.dx, c.dy) < 3 * c.r) {
-      let kx = X(p.x - p.drift - c.dx), ky = Y(p.y - c.dy);
-      const d = Math.hypot(kx - mid, ky - mid), lim = mid - 12;
+      let kx = X(p.x - p.drift - c.dx),
+        ky = Y(p.y - c.dy);
+      const d = Math.hypot(kx - mid, ky - mid),
+        lim = mid - 12;
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.lineWidth = 1.5;
       if (d > lim) {
         // ausserhalb: Pfeil am Rand in Richtung Kern
-        const ux = (kx - mid) / d, uy = (ky - mid) / d;
-        kx = mid + ux * lim; ky = mid + uy * lim;
+        const ux = (kx - mid) / d,
+          uy = (ky - mid) / d;
+        kx = mid + ux * lim;
+        ky = mid + uy * lim;
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.beginPath();
         ctx.moveTo(kx + ux * 7, ky + uy * 7);
@@ -563,15 +698,24 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
         ctx.fill();
       } else {
         ctx.setLineDash([2, 3]);
-        ctx.beginPath(); ctx.arc(kx, ky, c.r * 0.5 * k, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(kx, ky, c.r * 0.5 * k, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.setLineDash([]);
-        ctx.beginPath(); ctx.moveTo(kx - 6, ky); ctx.lineTo(kx + 6, ky); ctx.moveTo(kx, ky - 6); ctx.lineTo(kx, ky + 6); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(kx - 6, ky);
+        ctx.lineTo(kx + 6, ky);
+        ctx.moveTo(kx, ky - 6);
+        ctx.lineTo(kx, ky + 6);
+        ctx.stroke();
       }
     }
   }
   // Schirm mit Flugrichtung
-  const gx = X(p.x - p.drift), gy = Y(p.y);
-  const hx = Math.cos(p.heading), hy = -Math.sin(p.heading);
+  const gx = X(p.x - p.drift),
+    gy = Y(p.y);
+  const hx = Math.cos(p.heading),
+    hy = -Math.sin(p.heading);
   ctx.fillStyle = p.color;
   ctx.beginPath();
   ctx.moveTo(gx + hx * 8, gy + hy * 8);
@@ -588,18 +732,22 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
 // Barogramm: Höhe über Strecke, Kreisen hervorgehoben, Gegner dünn dahinter.
 export function drawBarogram(cv, s, player) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const W = cv.clientWidth, H = cv.clientHeight;
-  cv.width = W * dpr; cv.height = H * dpr;
+  const W = cv.clientWidth,
+    H = cv.clientHeight;
+  cv.width = W * dpr;
+  cv.height = H * dpr;
   const ctx = cv.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const w = s.world;
   const flights = s.pilots.flatMap((p) => (p.bestFlight ? [{ p, f: p.bestFlight }] : []));
   const maxZ = w.baseMSL(3600) + 100;
-  let maxX = 5000, minZ = Infinity;
+  let maxX = 5000,
+    minZ = Infinity;
   for (const { f } of flights) for (const q of f.track) maxX = Math.max(maxX, q.x + 500);
   for (let x = -500; x <= maxX; x += maxX / 100) minZ = Math.min(minZ, w.groundAt(x, w.laneCount - 1));
   minZ -= 50;
-  const padL = 40, padB = 20;
+  const padL = 40,
+    padB = 20;
   const mx = (x) => padL + ((x + 500) / (maxX + 500)) * (W - padL - 8);
   const my = (z) => H - padB - ((z - minZ) / (maxZ - minZ)) * (H - padB - 8);
   const css = getComputedStyle(cv);
@@ -610,7 +758,10 @@ export function drawBarogram(cv, s, player) {
   ctx.textAlign = 'right';
   const zStep = maxZ - minZ > 2000 ? 500 : 250;
   for (let z = Math.ceil(minZ / zStep) * zStep; z <= maxZ; z += zStep) {
-    ctx.beginPath(); ctx.moveTo(padL, my(z)); ctx.lineTo(W - 8, my(z)); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(padL, my(z));
+    ctx.lineTo(W - 8, my(z));
+    ctx.stroke();
     ctx.fillText(z + ' m', padL - 4, my(z) + 3);
   }
   ctx.textAlign = 'center';
@@ -618,17 +769,23 @@ export function drawBarogram(cv, s, player) {
   for (let k = 0; k * 1000 <= maxX; k += kmStep) ctx.fillText(k + ' km', mx(k * 1000), H - 5);
   for (let lane = 0; lane < w.laneCount; lane++) {
     ctx.fillStyle = lane ? 'rgba(70,120,60,0.55)' : 'rgba(110,160,90,0.45)';
-    ctx.beginPath(); ctx.moveTo(mx(-500), H - padB);
+    ctx.beginPath();
+    ctx.moveTo(mx(-500), H - padB);
     for (let x = -500; x <= maxX; x += maxX / 200) ctx.lineTo(mx(x), my(w.groundAt(x, lane)));
-    ctx.lineTo(mx(maxX), H - padB); ctx.fill();
+    ctx.lineTo(mx(maxX), H - padB);
+    ctx.fill();
   }
   for (const { p, f } of flights) {
     const me = p === player;
     ctx.lineWidth = me ? 2 : 1;
     for (let i = 1; i < f.track.length; i++) {
-      const a = f.track[i - 1], b = f.track[i];
+      const a = f.track[i - 1],
+        b = f.track[i];
       ctx.strokeStyle = me ? (b.c ? '#ffb02e' : '#ff5470') : hexA(p.color, 0.55);
-      ctx.beginPath(); ctx.moveTo(mx(a.x), my(a.z)); ctx.lineTo(mx(b.x), my(b.z)); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(mx(a.x), my(a.z));
+      ctx.lineTo(mx(b.x), my(b.z));
+      ctx.stroke();
     }
   }
 }
@@ -639,7 +796,8 @@ function hexA(hex, a) {
 }
 
 function mix(a, b, t) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const pa = parseInt(a.slice(1), 16),
+    pb = parseInt(b.slice(1), 16);
   const c = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
   return `rgb(${c(16)},${c(8)},${c(0)})`;
 }

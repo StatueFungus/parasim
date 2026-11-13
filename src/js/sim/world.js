@@ -3,7 +3,7 @@ import { mulberry32, hash, noise2, fbm, clamp, smoothstep } from './rng.js';
 // Simulationszeit in Sekunden ab Rundenbeginn; Rundenbeginn ist 11:30 Uhr.
 export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
-const GROW = 2;   // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
+const GROW = 2; // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
 const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
 const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
 
@@ -35,9 +35,7 @@ export class World {
       this.launchBump = this.launchH - this.mtnBase(0);
     }
     this.launchGround = this.ground(0);
-    this.launchZ = this.terrain === 'mountain'
-      ? this.launchGround + 25
-      : this.launchGround + (o.towHeight ?? 600);
+    this.launchZ = this.terrain === 'mountain' ? this.launchGround + 25 : this.launchGround + (o.towHeight ?? 600);
     this.ensure(-6000, 30000);
     for (const def of o.extraThermals || []) this.addThermal(def);
   }
@@ -137,11 +135,26 @@ export class World {
     const gap = (1.5 + 7 * r()) * 60;
     const sx = src.x + (r() - 0.5) * 200;
     const birds = w0 > 2.7 && r() < 0.35;
-    const twin = r() < 0.22, tSide = r() < 0.5 ? -1 : 1, tOff = 300 + 220 * r(), tW = 0.75 + 0.25 * r(), tDelay = 150 * r();
+    const twin = r() < 0.22,
+      tSide = r() < 0.5 ? -1 : 1,
+      tOff = 300 + 220 * r(),
+      tW = 0.75 + 0.25 * r(),
+      tDelay = 150 * r();
     const out = [this.makeThermal(sx, src.lane, tb, life, w0, rad, hash(this.seed, 'c' + src.lane, src.i, Math.round(tb)), birds)];
     if (twin) {
       const tx = sx + tSide * tOff;
-      out.push(this.makeThermal(tx, src.lane, tb + tDelay, life * 0.9, w0 * tW, rad * 0.9, hash(this.seed, 't' + src.lane, src.i, Math.round(tb)), false));
+      out.push(
+        this.makeThermal(
+          tx,
+          src.lane,
+          tb + tDelay,
+          life * 0.9,
+          w0 * tW,
+          rad * 0.9,
+          hash(this.seed, 't' + src.lane, src.i, Math.round(tb)),
+          false,
+        ),
+      );
     }
     src.next = tb + life + gap;
     return out;
@@ -153,8 +166,11 @@ export class World {
   }
 
   addThermal(d) {
-    this.thermals.push(this.makeThermal(d.x, d.lane ?? 0, d.tb ?? -300, d.life ?? 3600, d.w0 ?? 3, d.r ?? 200,
-      hash(this.seed, 'x', d.x), !!d.birds, { fixed: true }));
+    this.thermals.push(
+      this.makeThermal(d.x, d.lane ?? 0, d.tb ?? -300, d.life ?? 3600, d.w0 ?? 3, d.r ?? 200, hash(this.seed, 'x', d.x), !!d.birds, {
+        fixed: true,
+      }),
+    );
   }
 
   update(t) {
@@ -180,11 +196,13 @@ export class World {
       for (let j = i + 1; j < list.length; j++) {
         const b = list[j];
         if (b.fixed || b.lane !== a.lane || this.env(b, t) <= 0) continue;
-        const d = b.sx - a.sx, reach = a.r + b.r;
+        const d = b.sx - a.sx,
+          reach = a.r + b.r;
         if (Math.abs(d) > 0.95 * reach) continue;
         if (Math.abs(d) > 0.55 * reach) {
           const m = Math.min(Math.abs(d) / 2, 0.35 * dt) * Math.sign(d);
-          a.sx += m; b.sx -= m;
+          a.sx += m;
+          b.sx -= m;
           continue;
         }
         if (this.age(a, t) < 0.15 || this.age(b, t) < 0.15) continue;
@@ -192,8 +210,17 @@ export class World {
         const W = a.w0 + b.w0;
         const life = Math.max(a.tb + a.life, b.tb + b.life) - t + 600;
         const sx = (a.sx * a.w0 + b.sx * b.w0) / W;
-        const m = this.makeThermal(sx, a.lane, t - 0.3 * life, life, Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0),
-          Math.hypot(a.r, b.r) * 0.95, hash(this.seed, 'm', a.seed, b.seed), a.birds || b.birds, { merged: true });
+        const m = this.makeThermal(
+          sx,
+          a.lane,
+          t - 0.3 * life,
+          life,
+          Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0),
+          Math.hypot(a.r, b.r) * 0.95,
+          hash(this.seed, 'm', a.seed, b.seed),
+          a.birds || b.birds,
+          { merged: true },
+        );
         m.rs = t - 4000;
         list.splice(j, 1);
         list.splice(i, 1, m);
@@ -203,7 +230,9 @@ export class World {
   }
 
   // ---------- Thermik-Eigenschaften ----------
-  age(th, t) { return (t - th.tb) / th.life; }
+  age(th, t) {
+    return (t - th.tb) / th.life;
+  }
 
   env(th, t) {
     const a = this.age(th, t);
@@ -235,10 +264,14 @@ export class World {
   }
 
   // Steiggeschwindigkeit der Thermikluft, auch für Wachstum und Schräglage
-  riseSpeed(th, t) { return Math.max(1.8, th.w0 * this.dayFactor(t)); }
+  riseSpeed(th, t) {
+    return Math.max(1.8, th.w0 * this.dayFactor(t));
+  }
 
   // Die Blase wächst vom Boden nach oben bis zur Basis (bei 1500 m Säule etwa 5 Minuten).
-  topZ(th, t) { return th.gz + GROW * this.riseSpeed(th, t) * Math.max(0, t - th.rs); }
+  topZ(th, t) {
+    return th.gz + GROW * this.riseSpeed(th, t) * Math.max(0, t - th.rs);
+  }
 
   // Beim Zerfall reisst der Bart unten ab und die Unterkante steigt.
   bottomZ(th, t) {
@@ -253,7 +286,9 @@ export class World {
   }
 
   // 0..1: wie stark der Wind die Thermik zerreisst
-  torn() { return smoothstep(18, 35, Math.abs(this.windKmh)); }
+  torn() {
+    return smoothstep(18, 35, Math.abs(this.windKmh));
+  }
 
   strength(th, t) {
     let s = th.w0 * this.env(th, t) * this.dayFactor(t);
@@ -263,7 +298,9 @@ export class World {
     return s;
   }
 
-  radius(th) { return th.r * (1 - 0.3 * this.torn()); }
+  radius(th) {
+    return th.r * (1 - 0.3 * this.torn());
+  }
 
   // In der Talmitte sinkt die Luft als Ausgleich zur Hangthermik etwas stärker.
   bgSink(x, t, l = 0) {
@@ -295,13 +332,15 @@ export class World {
   // y ist der seitliche Abstand zur Bartachse beim Kreisen (die Bärte stehen auf der Flugachse y = 0).
   lift(x, z, t, l = 0, y = 0) {
     const base = this.baseMSL(t);
-    let w = 0, inCore = 0;
+    let w = 0,
+      inCore = 0;
     for (const th of this.thermals) {
       const lw = 1 - Math.abs(l - (th.lane || 0));
       if (lw <= 0.02) continue;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
-      const top = this.topZ(th, t), bot = this.bottomZ(th, t);
+      const top = this.topZ(th, t),
+        bot = this.bottomZ(th, t);
       if (z > top + 80 || z < bot - 80) continue;
       const dx = x - this.coreX(th, z, t);
       const q = (y ? Math.hypot(dx, y) : Math.abs(dx)) / this.radiusAt(th, z, t);
@@ -322,7 +361,8 @@ export class World {
   }
 
   nearestCore(x, z, t, lane = 0, y = 0) {
-    let best = null, bq = Infinity;
+    let best = null,
+      bq = Infinity;
     for (const th of this.thermals) {
       if ((th.lane || 0) !== lane) continue;
       const s = this.strength(th, t);
@@ -331,7 +371,10 @@ export class World {
       const dx = x - this.coreX(th, z, t);
       const r = this.radiusAt(th, z, t);
       const q = Math.hypot(dx, y) / r;
-      if (q < bq) { bq = q; best = { dx, dy: y, r, s, th }; }
+      if (q < bq) {
+        bq = q;
+        best = { dx, dy: y, r, s, th };
+      }
     }
     return best;
   }

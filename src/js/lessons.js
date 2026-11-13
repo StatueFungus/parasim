@@ -14,8 +14,19 @@ export const LESSONS = [
       'Kreist du nahe genug am Kern, wirst du automatisch zentriert. Wer zu früh einkreist, hängt im Randbereich und sinkt.',
     ],
     setup: {
-      world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.8, extraThermals: [{ x: 1100, w0: 3.4, r: 230, tb: -900, life: 6000, birds: true }] },
-      tStart: 2400, duration: 1200, airStart: 450, showThermals: true, glider: 'EN-B', centering: 'auto',
+      world: {
+        terrain: 'flat',
+        wind: 0,
+        clouds: 'cumulus',
+        quality: 0.8,
+        extraThermals: [{ x: 1100, w0: 3.4, r: 230, tb: -900, life: 6000, birds: true }],
+      },
+      tStart: 2400,
+      duration: 1200,
+      airStart: 450,
+      showThermals: true,
+      glider: 'EN-B',
+      centering: 'auto',
     },
     check(s, p) {
       const h = agl(s, p);
@@ -33,8 +44,19 @@ export const LESSONS = [
       'Die Technik: Wird das Steigen stärker, mach die Kurve auf (Schieber Richtung Mitte). So fliegst du ein Stück Richtung Kern. Wird es wieder schwächer, dreh enger ein. Lässt du die Leertaste los, fliegst du in die Richtung weiter, in die du gerade schaust.',
     ],
     setup: {
-      world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 0.6, extraThermals: [{ x: 900, w0: 3.3, r: 210, tb: -900, life: 6000 }] },
-      tStart: 2400, duration: 540, airStart: 400, showThermals: true, glider: 'EN-B', centering: 'assist',
+      world: {
+        terrain: 'flat',
+        wind: 0,
+        clouds: 'cumulus',
+        quality: 0.6,
+        extraThermals: [{ x: 900, w0: 3.3, r: 210, tb: -900, life: 6000 }],
+      },
+      tStart: 2400,
+      duration: 540,
+      airStart: 400,
+      showThermals: true,
+      glider: 'EN-B',
+      centering: 'assist',
     },
     check(s, p) {
       const h = agl(s, p);
@@ -52,7 +74,14 @@ export const LESSONS = [
       'Graue, zerfaserte Wolken zerfallen schon. Darunter trägt es kaum noch, und der Bart reisst unten zuerst ab. Kreise erst, wenn das Vario es bestätigt.',
       'Eine Thermik wächst von unten nach oben. Bevor die Wolke entsteht, trägt es oft schon in Bodennähe. Unter der Wolke wird der Bart meist noch etwas stärker.',
     ],
-    setup: { world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 1.05 }, tStart: 2700, duration: 1800, airStart: 900, showThermals: false, glider: 'EN-B' },
+    setup: {
+      world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 1.05 },
+      tStart: 2700,
+      duration: 1800,
+      airStart: 900,
+      showThermals: false,
+      glider: 'EN-B',
+    },
     check(s, p) {
       const n = (p.flight?.thermals ?? 0) + (p.circling && p.z - (p.flight?.circStart?.z ?? p.z) >= 200 ? 1 : 0);
       if (n >= 2) return { done: true };
@@ -68,7 +97,14 @@ export const LESSONS = [
       'Der weisse Pfeil am Beschleuniger zeigt die Sollfahrt nach MacCready. Sie berücksichtigt Wind, Sinken und deinen MC-Wert.',
       'Im Sinken und im Gegenwind schneller fliegen, im Steigen langsamer. Den MC-Wert stellst du mit der Taste M.',
     ],
-    setup: { world: { terrain: 'flat', wind: -15, clouds: 'cumulus', quality: 1.1 }, tStart: 2400, duration: 1800, airStart: 1000, showThermals: false, glider: 'EN-B' },
+    setup: {
+      world: { terrain: 'flat', wind: -15, clouds: 'cumulus', quality: 1.1 },
+      tStart: 2400,
+      duration: 1800,
+      airStart: 1000,
+      showThermals: false,
+      glider: 'EN-B',
+    },
     check(s, p) {
       const d = p.dist / 1000;
       if (d >= 7) return { done: true };
@@ -85,8 +121,18 @@ export const LESSONS = [
       'Vögel kreisen gerne in Thermik. Achte auf sie.',
     ],
     setup: {
-      world: { terrain: 'flat', wind: 5, clouds: 'cumulus', quality: 0.75, extraThermals: [{ x: 1600, w0: 2.2, r: 180, tb: -400, life: 3000, birds: true }] },
-      tStart: 3000, duration: 1500, airStart: 280, showThermals: false, glider: 'EN-B',
+      world: {
+        terrain: 'flat',
+        wind: 5,
+        clouds: 'cumulus',
+        quality: 0.75,
+        extraThermals: [{ x: 1600, w0: 2.2, r: 180, tb: -400, life: 3000, birds: true }],
+      },
+      tStart: 3000,
+      duration: 1500,
+      airStart: 280,
+      showThermals: false,
+      glider: 'EN-B',
     },
     check(s, p) {
       const h = agl(s, p);
@@ -104,8 +150,19 @@ export const LESSONS = [
       'Flieg zurück, kreise im Steigen ein und wende danach mit → wieder auf Kurs. Merke: Zurückfliegen lohnt sich nur, wenn der Bart nah ist.',
     ],
     setup: {
-      world: { terrain: 'flat', wind: 0, clouds: 'blue', quality: 0.5, extraThermals: [{ x: -650, w0: 3.2, r: 210, tb: -900, life: 6000, birds: true }] },
-      tStart: 3000, duration: 1500, airStart: 420, showThermals: false, glider: 'EN-B', missedAt: -650,
+      world: {
+        terrain: 'flat',
+        wind: 0,
+        clouds: 'blue',
+        quality: 0.5,
+        extraThermals: [{ x: -650, w0: 3.2, r: 210, tb: -900, life: 6000, birds: true }],
+      },
+      tStart: 3000,
+      duration: 1500,
+      airStart: 420,
+      showThermals: false,
+      glider: 'EN-B',
+      missedAt: -650,
     },
     check(s, p) {
       const h = agl(s, p);
@@ -122,7 +179,14 @@ export const LESSONS = [
       'In der Talmitte (Taste E) ist viel Luft unter dir. Dort trägt es schlecht, dafür schiebt ab Mittag der Talwind.',
       'Mit Höhe an die Kante, tief ins Tal: Die Anzeige «über Grat» unten hilft dir bei der Entscheidung. Der Wechsel dauert knapp eine Flugminute.',
     ],
-    setup: { world: { terrain: 'mountain', wind: 0, clouds: 'cumulus', quality: 1, seed: 7 }, tStart: 1800, duration: 3600, showThermals: false, glider: 'EN-B', penalty: 0 },
+    setup: {
+      world: { terrain: 'mountain', wind: 0, clouds: 'cumulus', quality: 1, seed: 7 },
+      tStart: 1800,
+      duration: 3600,
+      showThermals: false,
+      glider: 'EN-B',
+      penalty: 0,
+    },
     check(s, p) {
       const d = p.score() / 1000;
       if (d >= 15) return { done: true };
@@ -138,7 +202,14 @@ export const LESSONS = [
       'Auf deiner Höhe liegt das Steigen deshalb luvseitig der Wolke. Bei Rückenwind triffst du es schon, bevor du unter der Wolke bist.',
       'Beim Kreisen driftest du mit dem Wind. Achte auf die Schleifen in deiner Spur, und darauf, wie sich der Kern mit der Höhe verschiebt.',
     ],
-    setup: { world: { terrain: 'flat', wind: 20, clouds: 'cumulus', quality: 1.1 }, tStart: 2700, duration: 1800, airStart: 700, showThermals: true, glider: 'EN-B' },
+    setup: {
+      world: { terrain: 'flat', wind: 20, clouds: 'cumulus', quality: 1.1 },
+      tStart: 2700,
+      duration: 1800,
+      airStart: 700,
+      showThermals: true,
+      glider: 'EN-B',
+    },
     check(s, p) {
       const n = (p.flight?.thermals ?? 0) + (p.circling && p.z - (p.flight?.circStart?.z ?? p.z) >= 200 ? 1 : 0);
       if (n >= 2) return { done: true };
@@ -154,7 +225,14 @@ export const LESSONS = [
       'Zu früh: schwache Thermik, tiefe Basis, Absaufgefahr. Zu spät: beste Bedingungen, aber weniger Zeit.',
       'Nach einer Aussenlandung kannst du wieder hochlaufen. Das kostet 10 Flugminuten.',
     ],
-    setup: { world: { terrain: 'flat', wind: 5, clouds: 'cumulus', quality: 1 }, tStart: 0, duration: 7200, penalty: 600, showThermals: false, glider: 'EN-B' },
+    setup: {
+      world: { terrain: 'flat', wind: 5, clouds: 'cumulus', quality: 1 },
+      tStart: 0,
+      duration: 7200,
+      penalty: 600,
+      showThermals: false,
+      glider: 'EN-B',
+    },
     check(s, p) {
       const d = p.score() / 1000;
       if (d >= 20) return { done: true };
