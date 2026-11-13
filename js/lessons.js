@@ -49,7 +49,8 @@ export const LESSONS = [
     intro: [
       'Ab jetzt ist die Thermik unsichtbar. Die Wolken verraten dir, wo es steigt.',
       'Junge Wolken mit klarer, flacher Basis wachsen gerade. Darunter steht meistens eine aktive Thermik.',
-      'Graue, zerfaserte Wolken zerfallen schon. Darunter trägt es kaum noch. Kreise erst, wenn das Vario es bestätigt.',
+      'Graue, zerfaserte Wolken zerfallen schon. Darunter trägt es kaum noch, und der Bart reisst unten zuerst ab. Kreise erst, wenn das Vario es bestätigt.',
+      'Eine Thermik wächst von unten nach oben. Bevor die Wolke entsteht, trägt es oft schon in Bodennähe. Unter der Wolke wird der Bart meist noch etwas stärker.',
     ],
     setup: { world: { terrain: 'flat', wind: 0, clouds: 'cumulus', quality: 1.05 }, tStart: 2700, duration: 1800, airStart: 900, showThermals: false, glider: 'EN-B' },
     check(s, p) {

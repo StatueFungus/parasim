@@ -24,6 +24,14 @@ ES-Module brauchen einen Webserver; `index.html` direkt als Datei öffnen funkti
 - **Linien im Gebirge** (Q / E): An der **Hangkante** gibt es dichte, kräftige Thermik und Hangaufwind, aber der Grat ist nah. In der **Talmitte** liegt der Boden tief, dafür trägt es schwach, es sinkt etwas stärker und ab Mittag schiebt der Talwind. Der Wechsel dauert knapp eine Flugminute, in der du langsamer vorankommst.
 - Computerpiloten nutzen beides: Gute Piloten fliegen mit Höhenreserve an der Kante, weichen tief ins Tal aus und kehren zu einem überflogenen Bart zurück. Anfänger bleiben in der Talmitte.
 
+## Lebenszyklus der Thermik
+
+- **Wachstum von unten**: Die Thermikblase steigt mit doppelter Steiggeschwindigkeit vom Boden auf (bei 1500 m Säule etwa 5 Minuten). Darüber trägt es noch nicht. Die Wolke entsteht erst, wenn die Blase die Basis erreicht, und wächst dann einige Minuten.
+- **Abreissen beim Zerfall**: Ab drei Vierteln der Lebensdauer steigt die Unterkante des Barts. Wer tief ist, verliert ihn zuerst.
+- **Breiter mit der Höhe**: Unten hat der Bart gut die Hälfte seines vollen Radius, ab 900 m über Grund die volle Breite. Ein reifer Bart ist etwas breiter als ein junger.
+- **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 30 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
+- **Verschmelzen**: Etwa jede fünfte Quelle erzeugt einen Zwillingsbart in 300–520 m Abstand. Nahe Bärte ziehen sich an und verschmelzen zu einem breiteren, kräftigeren Bart mit grösserer Wolke.
+
 ## Bärte im Wind
 
 - Thermik löst sich an einem festen Punkt am Boden ab und wird beim Aufsteigen vom Wind versetzt. Der Kern auf Höhe h liegt um `833 · (h/1000)^1.2 · Wind / Steigen` Meter leewärts (Windprofil `(h/1000)^0.2`).

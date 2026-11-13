@@ -129,41 +129,47 @@ export class Renderer {
     }
   }
 
+  // Thermiksäule im Training: wächst als Blase vom Boden nach oben, reisst beim Zerfall unten ab,
+  // wird mit der Höhe breiter und steht im Wind schräg. Unter der Wolke etwas kräftiger gefärbt.
   drawThermals(s, lane) {
     const ctx = this.ctx, w = s.world;
-    const top = this.sy(w.baseMSL(s.t));
+    const base = w.baseMSL(s.t);
     ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
     for (const th of w.thermals) {
       if ((th.lane || 0) !== lane) continue;
       const st = w.strength(th, s.t);
       if (st < 0.15) continue;
-      const base = w.baseMSL(s.t);
-      const hw = w.radius(th) * 1.6 * this.kx;
-      const xBot = this.sx(th.sx), xTop = this.sx(w.coreX(th, base, s.t));
-      if (Math.max(xBot, xTop) + hw < 0 || Math.min(xBot, xTop) - hw > this.W) continue;
-      const a = Math.min(0.42, st / 8) * (w.laneCount > 1 && lane === 0 ? 0.75 : 1);
+      const zTop = Math.min(w.topZ(th, s.t), base), zBot = Math.max(th.gz, w.bottomZ(th, s.t));
+      if (zTop - zBot < 20) continue;
+      const hwMax = w.radiusAt(th, zTop, s.t) * 1.6 * this.kx;
+      const xBot = this.sx(w.coreX(th, zBot, s.t)), xTop = this.sx(w.coreX(th, zTop, s.t));
+      if (Math.max(xBot, xTop) + hwMax < 0 || Math.min(xBot, xTop) - hwMax > this.W) continue;
+      const a0 = Math.min(0.42, st / 8) * (w.laneCount > 1 && lane === 0 ? 0.75 : 1);
       const rgb = lane === 0 ? '255,140,40' : '255,200,60';
-      // Schräger Schlauch: in waagrechten Scheiben zeichnen, jede um den Kern auf ihrer Höhe zentriert.
-      const bottom = this.sy(th.gz);
-      const slices = Math.abs(xTop - xBot) < 4 ? 1 : 24;
-      const dz = (base - th.gz) / slices;
+      // In waagrechten Scheiben zeichnen, jede um den Kern auf ihrer Höhe zentriert und so breit wie der Bart dort.
+      const slices = 28;
+      const dz = (zTop - zBot) / slices;
       for (let i = 0; i < slices; i++) {
-        const z0 = th.gz + i * dz;
-        const cx = this.sx(w.coreX(th, z0 + dz / 2, s.t));
+        const z0 = zBot + i * dz, zm = z0 + dz / 2;
+        const cx = this.sx(w.coreX(th, zm, s.t));
+        const hw = w.radiusAt(th, zm, s.t) * 1.6 * this.kx;
+        const boost = w.clouds !== 'blue' ? 1 + 0.3 * Math.min(1, Math.max(0, (zm - (base - 450)) / 410)) : 1;
+        const fade = i === slices - 1 && zTop < base - 20 ? 0.5 : 1;   // Blasenoberkante weich
+        const a = Math.min(0.55, a0 * boost) * fade;
         const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
         g.addColorStop(0, `rgba(${rgb},0)`);
         g.addColorStop(0.5, `rgba(${rgb},${a})`);
         g.addColorStop(1, `rgba(${rgb},0)`);
         ctx.fillStyle = g;
-        const y1 = i === 0 ? bottom : this.sy(z0), y0 = this.sy(z0 + dz);
+        const y1 = this.sy(z0), y0 = this.sy(z0 + dz);
         ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
       }
       // Auslösepunkt am Boden
       ctx.fillStyle = `rgba(${rgb},0.8)`;
-      ctx.beginPath(); ctx.arc(xBot, bottom - 2, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(this.sx(th.sx), this.sy(th.gz) - 2, 2.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(120,50,0,0.75)';
-      ctx.fillText(st.toFixed(1), xTop, top + 16 + lane * 13);
+      ctx.fillText(st.toFixed(1), xTop, this.sy(zTop) + 16 + lane * 13);
     }
   }
 
@@ -339,9 +345,12 @@ export class Renderer {
     ctx.lineWidth = 1.3;
     for (const th of w.thermals) {
       if (!th.birds || w.strength(th, s.t) < 1) continue;
-      const span = Math.max(100, base - th.gz - 250);
+      // Vögel kreisen nur in dem Teil der Säule, der gerade trägt
+      const lo = Math.max(th.gz + 120, w.bottomZ(th, s.t)), hi = Math.min(base - 250, w.topZ(th, s.t));
+      if (hi - lo < 60) continue;
+      const span = hi - lo;
       for (let k = 0; k < 3; k++) {
-        const z = th.gz + 120 + ((s.t * 1.2 + k * 260 + th.id * 37) % span);
+        const z = lo + ((s.t * 1.2 + k * 260 + th.id * 37) % span);
         const cx = w.coreX(th, z, s.t);
         if (this.sx(cx) < -50 || this.sx(cx) > this.W + 50) continue;
         const ang = s.t * 0.25 + k * 2.1;
