@@ -2,6 +2,20 @@
 
 Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
+## [0.2.0](https://github.com/StatueFungus/parasim/compare/v0.1.0...v0.2.0) (2026-11-13)
+
+### Neue Funktionen
+
+* Version im Hauptmenü anzeigen ([18fdcd1](https://github.com/StatueFungus/parasim/commit/18fdcd1e1c47787693dc6024da389d7d439c44a6))
+
+### Fehlerbehebungen
+
+* **container:** Health-Check in JSON-Schreibweise, numerischer Benutzer ([0191f63](https://github.com/StatueFungus/parasim/commit/0191f63705fc6424c7a4028a4931a78a5e02b578))
+
+### Build und Abhängigkeiten
+
+* **deps-dev:** Changelog-Preset auf 9.3.1 (passend zu semantic-release 25) ([0d36603](https://github.com/StatueFungus/parasim/commit/0d366030a084fd86ebd0f3cb464f57ebfb926204))
+
 ## 0.1.0 (2026-11-13)
 
 Erste Version.
