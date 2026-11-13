@@ -2,6 +2,12 @@
 
 Wird bei jedem Release von semantic-release aus den Commit-Nachrichten erzeugt.
 
+## [0.3.0](https://github.com/StatueFungus/parasim/compare/v0.2.1...v0.3.0) (2026-11-13)
+
+### Neue Funktionen
+
+* **hud:** neues Cockpit, schönere Schirme mit Liegegurtzeug ([333efd5](https://github.com/StatueFungus/parasim/commit/333efd5310ea50c6d1cdc9f2829655c556ce6dd2))
+
 ## [0.2.1](https://github.com/StatueFungus/parasim/compare/v0.2.0...v0.2.1) (2026-11-13)
 
 ### Fehlerbehebungen
