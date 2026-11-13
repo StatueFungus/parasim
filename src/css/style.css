@@ -1173,9 +1173,11 @@ input[type='range'] {
     gap: 16px;
     padding-bottom: calc(44px + env(safe-area-inset-bottom, 0px));
   }
+  /* Tipps neben dem Zentrierassistenten, nicht darüber */
   .coach {
     top: calc(104px + env(safe-area-inset-top, 0px));
     font-size: 13px;
+    max-width: calc(100vw - 2 * (max(16px, env(safe-area-inset-left, 0px)) + min(170px, 40vh) + 12px));
   }
   .goal {
     top: calc(142px + env(safe-area-inset-top, 0px));

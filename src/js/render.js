@@ -1,5 +1,5 @@
 import { mulberry32, noise2, clamp } from './sim/rng.js';
-import { TURN_TIME } from './sim/pilot.js';
+import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
 const TOP_PAD = 70;
@@ -697,7 +697,24 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
     range = 100,
     k = (mid - 8) / range;
 
-  // Ansichtsmitte: Mittel der jüngsten Bahn, sanft nachgeführt
+  // Vorschau: das nächste Kreisdrittel als Flugpfad, aus der Krümmung des Schiebers gerechnet.
+  // Höchstens so lang wie ein Drittel des Einkreis-Kreises, damit der Pfad beim Aufmachen
+  // stufenlos ins Gerade übergeht statt als riesiger Bogen aus der Anzeige zu springen.
+  const kappa = p.steer / R_TIGHT;
+  const len = Math.min((2 * Math.PI) / 3 / Math.max(Math.abs(kappa), 1e-6), ((2 * Math.PI) / 3) * (R_TIGHT / STEER_START));
+  const path = [];
+  let px = p.x - p.drift,
+    py = p.y,
+    ph = p.heading;
+  for (let i = 0, ds = len / 24; i <= 24; i++) {
+    path.push([px, py]);
+    px += Math.cos(ph + (kappa * ds) / 2) * ds;
+    py += Math.sin(ph + (kappa * ds) / 2) * ds;
+    ph += kappa * ds;
+  }
+
+  // Ansichtsmitte: Mittel der jüngsten Bahn, sanft nachgeführt. Läuft der Schirm oder das Ende
+  // des Pfads aus der Anzeige (Geradeausflug), zieht die Mitte nach.
   let mx = 0,
     my = 0,
     n = 0;
@@ -706,8 +723,16 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
     my += pts[i].y;
     n++;
   }
-  const tx = n ? mx / n : p.x - p.drift,
+  let tx = n ? mx / n : p.x - p.drift,
     ty = n ? my / n : p.y;
+  for (const [qx, qy] of [path[path.length - 1], path[0]]) {
+    const d = Math.hypot(qx - tx, qy - ty),
+      lim = 0.75 * range;
+    if (d > lim) {
+      tx += (qx - tx) * (1 - lim / d);
+      ty += (qy - ty) * (1 - lim / d);
+    }
+  }
   const v = (cv._view ??= { x: tx, y: ty });
   if (Math.hypot(v.x - tx, v.y - ty) > 300) {
     v.x = tx;
@@ -729,21 +754,6 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
     ctx.beginPath();
     ctx.arc(X(q.x), Y(q.y), up ? 1.6 + Math.min(3.2, q.v) : 1.4, 0, Math.PI * 2);
     ctx.fill();
-  }
-  // Vorschau: das nächste Drittel des aktuellen Kreises als Flugpfad, bei offenem Schieber ein gerades Stück
-  const ax = p.x - p.drift,
-    ay = p.y;
-  const path = [];
-  if (Number.isFinite(p.R) && p.R < 400) {
-    const a0 = Math.atan2(ay - p.cy, ax - p.cx);
-    // Drehsinn so wählen, dass die Tangente in Flugrichtung zeigt
-    const sg = -Math.sin(a0) * Math.cos(p.heading) + Math.cos(a0) * Math.sin(p.heading) >= 0 ? 1 : -1;
-    for (let i = 0; i <= 24; i++) {
-      const a = a0 + ((sg * (2 * Math.PI)) / 3) * (i / 24);
-      path.push([p.cx - p.drift + p.R * Math.cos(a), p.cy + p.R * Math.sin(a)]);
-    }
-  } else {
-    for (let i = 0; i <= 1; i++) path.push([ax + Math.cos(p.heading) * 60 * i, ay + Math.sin(p.heading) * 60 * i]);
   }
   ctx.strokeStyle = 'rgba(11,21,31,0.55)';
   ctx.lineWidth = 5;
