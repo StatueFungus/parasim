@@ -24,6 +24,14 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 - **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 15 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
 - **Verschmelzen**: Etwa jede fünfte Quelle erzeugt einen Zwillingsbart in 300–520 m Abstand. Nahe Bärte ziehen sich an und verschmelzen zu einem breiteren, kräftigeren Bart mit grösserer Wolke.
 
+## Sonnenstand
+
+Die Strecke führt nach Westen, der Blick geht nach Süden. Die Sonne folgt einem Sommertag in den Alpen (47° N, Höchststand um 13:30 Uhr, `src/js/sim/sun.js`).
+
+- **Himmel und Licht**: Vormittags steht die Sonne links und es liegt Dunst über dem Horizont, der sich bis gegen 12:45 Uhr auflöst. Ab etwa 14 Uhr wird das Licht wärmer.
+- **Wolkenschatten**: Sie fallen vormittags nach Westen (in Flugrichtung vor die Wolke), mittags fast senkrecht darunter und nachmittags nach Osten.
+- **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr. Zugewandte Flanken erscheinen heller, abgewandte im Schatten.
+
 ## Bärte im Wind
 
 - Thermik löst sich an einem festen Punkt am Boden ab und wird beim Aufsteigen vom Wind versetzt. Der Kern auf Höhe h liegt um `0.35 · 833 · (h/1000)^1.2 · Wind / Steigen` Meter leewärts (Windprofil `(h/1000)^0.2`; der Faktor 0.35 berücksichtigt, dass Thermikkerne geschlossener aufsteigen als einzelne Luftpakete). Bei 10 km/h steht ein Bart über 1500 m etwa 0.5 km schräg.

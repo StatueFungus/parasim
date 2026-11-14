@@ -1,4 +1,5 @@
 import { mulberry32, hash, noise2, fbm, clamp, smoothstep } from './rng.js';
+import { sunAt, slopeLight } from './sun.js';
 
 // Simulationszeit in Sekunden ab Rundenbeginn; Rundenbeginn ist 11:30 Uhr.
 export const DAY_START = 11.5 * 3600;
@@ -162,7 +163,27 @@ export class World {
 
   // rs: Zeitpunkt, ab dem die Thermikblase vom Boden aufsteigt
   makeThermal(sx, lane, tb, life, w0, r, seed, birds, extra = {}) {
-    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+    const slope = (this.groundAt(sx + 150, lane) - this.groundAt(sx - 150, lane)) / 300;
+    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+  }
+
+  // Sonnenstand zur Rundenzeit t, für einen Zeitschritt zwischengespeichert
+  sun(t) {
+    if (this.sunT !== t) {
+      this.sunT = t;
+      this.sunNow = sunAt(DAY_START + t);
+    }
+    return this.sunNow;
+  }
+
+  // Im Gebirge trägt die Flanke an der Kante besser, die gerade zur Sonne zeigt; abgewandte Flanken schwächer.
+  sunFactor(th, t) {
+    if (this.terrain !== 'mountain' || th.lane) return 1;
+    // Nur die Asymmetrie zählt: mittags tragen beide Flanken gleich
+    const sun = this.sun(t),
+      lit = slopeLight(sun, th.slope),
+      rel = (2 * lit) / (lit + slopeLight(sun, -th.slope));
+    return clamp(1 + 0.8 * (rel - 1), 0.8, 1.2);
   }
 
   addThermal(d) {
@@ -291,7 +312,7 @@ export class World {
   }
 
   strength(th, t) {
-    let s = th.w0 * this.env(th, t) * this.dayFactor(t);
+    let s = th.w0 * this.env(th, t) * this.dayFactor(t) * this.sunFactor(th, t);
     const tf = this.torn();
     // Zerrissene Bärte: schwächer und pulsierend
     if (tf > 0) s *= 1 - 0.15 * tf - 0.45 * tf * (0.5 + 0.5 * Math.sin(t / 35 + th.id * 1.7));

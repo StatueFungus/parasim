@@ -622,6 +622,15 @@ for (const id of [
 ])
   H[id] = $(id);
 
+// Knopftexte nur bei Änderung schreiben: Ersetzt man jeden Frame den Inhalt, geht ein Klick verloren,
+// wenn das Element unter dem Zeiger zwischen Drücken und Loslassen ausgetauscht wird.
+function setLabel(el, html) {
+  if (el.dataset.label !== html) {
+    el.dataset.label = html;
+    el.innerHTML = html;
+  }
+}
+
 function updateHud(dt) {
   const { session: s, player: p, cfg } = game;
   const w = s.world;
@@ -691,7 +700,7 @@ function updateHud(dt) {
     const toLane = Math.abs(p.lane - p.l) > 0.001;
     H.hLane.textContent = toLane ? '→ ' + LANE_NAMES[p.lane] : LANE_NAMES[p.lane];
     H.hRidge.textContent = Math.round(p.z - w.ground(p.x)) + ' m';
-    H.bLane.innerHTML = p.lane === 0 ? 'Ins Tal <kbd>E</kbd>' : 'Zur Kante <kbd>Q</kbd>';
+    setLabel(H.bLane, p.lane === 0 ? 'Ins Tal <kbd>E</kbd>' : 'Zur Kante <kbd>Q</kbd>');
   }
   H.bLane.disabled = !flying;
 
@@ -724,7 +733,7 @@ function updateGroundPanel(s, p, cfg) {
   const w = s.world;
   const df = w.dayFactor(s.t);
   H.gMeterFill.style.width = Math.round(df * 100) + '%';
-  H.gFast.textContent = fast ? 'Normale Zeit' : 'Zeitraffer';
+  setLabel(H.gFast, (fast ? 'Normale Zeit' : 'Zeitraffer') + ' <kbd>X</kbd>');
   H.gFast.hidden = false;
   H.gEnd.hidden = p.flights.length === 0 && cfg.mode !== 'training';
   if (p.state === 'ready') {
@@ -734,7 +743,7 @@ function updateGroundPanel(s, p, cfg) {
       `${clockOf(s.t)} Uhr. Thermik ${strength}, Basis auf ${Math.round(w.baseMSL(s.t))} m. ` +
       (w.terrain === 'flat' ? 'Du startest mit der Winde.' : 'Du startest am Hang.');
     H.gStart.hidden = false;
-    H.gStart.innerHTML = 'Starten <kbd>Enter</kbd>';
+    setLabel(H.gStart, 'Starten <kbd>Enter</kbd>');
   } else if (p.state === 'walking') {
     H.gTitle.textContent = 'Aufstieg zum Startplatz';
     H.gText.textContent = `Noch ${Math.ceil((p.walkUntil - s.t) / 60)} Flugminuten bis zum Startplatz. Bisher beste Strecke: ${km(p.best)}.`;
@@ -750,7 +759,7 @@ function updateGroundPanel(s, p, cfg) {
     else text = 'Für einen weiteren Aufstieg reicht die Zeit nicht mehr.';
     H.gText.textContent = text;
     H.gStart.hidden = lessonNoRetry || (s.penalty && s.remaining() <= s.penalty);
-    H.gStart.innerHTML = (s.penalty ? 'Hochlaufen' : 'Zurück zum Start') + ' <kbd>Enter</kbd>';
+    setLabel(H.gStart, (s.penalty ? 'Hochlaufen' : 'Zurück zum Start') + ' <kbd>Enter</kbd>');
     H.gEnd.hidden = false;
   }
 }
