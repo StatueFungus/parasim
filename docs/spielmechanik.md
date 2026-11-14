@@ -65,7 +65,7 @@ Der Fluglehrer warnt vor Schauern in Flugrichtung, unter dem Regen, im Lee und e
 Die Strecke führt nach Westen, der Blick geht nach Süden. Die Sonne folgt einem Sommertag in den Alpen (47° N, Höchststand um 13:30 Uhr, `src/js/sim/sun.js`).
 
 - **Himmel und Licht**: Vormittags steht die Sonne links und es liegt Dunst über dem Horizont, der sich bis gegen 12:45 Uhr auflöst. Ab etwa 14 Uhr wird das Licht wärmer.
-- **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr. Zugewandte Flanken erscheinen heller, abgewandte im Schatten.
+- **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr.
 
 ## Bärte im Wind
 
