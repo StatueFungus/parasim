@@ -28,6 +28,7 @@ const prefs = Object.assign(
     mc: 1,
     centering: 'auto',
     daytime: 'morning',
+    weather: 'normal',
   },
   load('prefs', {}),
 );
@@ -114,6 +115,7 @@ function dailyCfg() {
       wind: winds[Math.floor(r() * winds.length)],
       clouds: clouds[Math.floor(r() * clouds.length)],
       quality: 0.9 + 0.3 * r(),
+      weather: ['normal', 'normal', 'normal', 'overdev', 'cirrus', 'inversion'][Math.floor(r() * 6)],
     },
     glider: 'EN-B',
     bots: 3,
@@ -134,6 +136,15 @@ const DAYTIMES = {
     desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis, im Gebirge schiebt Talwind. Gegen Ende lässt sie nach.',
   },
 };
+const WEATHERS = {
+  normal: { name: 'Normal', desc: 'Ein guter Thermiktag ohne Besonderheiten.' },
+  overdev: {
+    name: 'Überentwicklung',
+    desc: 'Ab etwa 12:30 Uhr türmen sich kräftige Wolken auf und regnen aus. Darunter fällt kalte Luft, daneben schläft die Thermik ein.',
+  },
+  cirrus: { name: 'Abschirmung', desc: 'Schleierwolken ziehen in Bändern durch und schwächen die Thermik darunter deutlich.' },
+  inversion: { name: 'Inversion', desc: 'Eine Sperrschicht deckelt die Basis etwa 400 m tiefer. Flache Wolken, darunter Dunst.' },
+};
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
 const TERRAIN_NAMES = { flat: 'Flachland', hills: 'Hügelland', mountain: 'Gebirge' };
@@ -141,13 +152,15 @@ const TERRAIN_NAMES = { flat: 'Flachland', hills: 'Hügelland', mountain: 'Gebir
 function describe(cfg) {
   const w = cfg.world;
   const day = cfg.daytime && cfg.daytime !== 'morning' ? ` · ${DAYTIMES[cfg.daytime].name}` : '';
-  return `${cfg.glider} · ${TERRAIN_NAMES[w.terrain]} · ${CLOUD_NAMES[w.clouds]} · Wind ${windText(w.wind)}${day}`;
+  const wx = w.weather && w.weather !== 'normal' ? ` · ${WEATHERS[w.weather].name}` : '';
+  return `${cfg.glider} · ${TERRAIN_NAMES[w.terrain]} · ${CLOUD_NAMES[w.clouds]}${wx} · Wind ${windText(w.wind)}${day}`;
 }
 
 function pbKey(cfg) {
   const w = cfg.world;
   const day = cfg.daytime && cfg.daytime !== 'morning' ? ':' + cfg.daytime : '';
-  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}:${cfg.centering}${day}`;
+  const wx = w.weather && w.weather !== 'normal' ? ':' + w.weather : '';
+  return `pb:${cfg.mode}:${cfg.glider}:${w.terrain}:${w.clouds}:${w.wind}:${w.quality}:${cfg.centering}${day}${wx}`;
 }
 
 // ---------- Spielstart ----------
@@ -497,6 +510,8 @@ function coachTip(s, p) {
     const tip = centeringTip(s, p);
     if (tip) return tip;
   }
+  const wx = weatherTip(s, p);
+  if (wx) return wx;
   if (p.circling) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
@@ -578,6 +593,28 @@ function leanTip(s, p) {
       `Der Wind versetzt den Bart: Auf deiner Höhe steigt es etwa ${Math.round(Math.abs(off) / 50) * 50} m ` +
       (before ? 'vor der Wolke, du triffst ihn also früher.' : 'hinter der Wolke, flieg unter ihr durch.')
     );
+  }
+  return null;
+}
+
+// Schauer, Abschirmung und Lee: Gefahren und schwache Thermik früh ansagen
+function weatherTip(s, p) {
+  const w = s.world,
+    lane = p.l > 0.5 ? 1 : 0;
+  const base = w.baseMSL(s.t);
+  for (const c of w.storms) {
+    if (c.lane !== lane || c.s < 0.4) continue;
+    if (w.rainSink(c.th, p.x, p.z, s.t) > 0.6)
+      return 'Du bist unter dem Schauer, hier fällt kalte Luft. Schnell raus, am besten mit Beschleuniger.';
+    const ahead = (w.cloud(c.th, s.t)?.x ?? c.x) - p.x;
+    if (p.z < base && ahead * p.dir > 0 && Math.abs(ahead) < 2500)
+      return 'Schauer voraus! Darunter fällt kalte Luft und daneben schläft die Thermik ein. Nicht hineinfliegen.';
+  }
+  if (p.state === 'flying' && w.leeAt(p.x, p.z) > 0.4)
+    return 'Lee! Auf der windabgewandten Seite sinkt es und es ist ruppig. Abstand zum Gelände halten.';
+  if (!p.circling && w.shade(p.x, s.t) > 0.6 && !game.cirrusTold) {
+    game.cirrusTold = true;
+    return 'Schleierwolken schirmen die Sonne ab, die Thermik ist hier schwach. Hoch bleiben und zu sonnigen Stellen vorfliegen.';
   }
   return null;
 }
@@ -1032,6 +1069,12 @@ segInit('sQuality', 'quality', Number);
 segInit('sLen', 'len', Number);
 segInit('sCenter', 'centering');
 segInit('sDaytime', 'daytime');
+segInit('sWeather', 'weather');
+const weatherLabel = () => {
+  $('weatherDesc').textContent = WEATHERS[prefs.weather].desc;
+};
+$('sWeather').addEventListener('click', weatherLabel);
+weatherLabel();
 const daytimeLabel = () => {
   $('daytimeDesc').textContent = DAYTIMES[prefs.daytime].desc;
 };
@@ -1084,6 +1127,7 @@ $('setupGo').onclick = () => {
       wind: prefs.wind,
       clouds: prefs.clouds,
       quality: prefs.quality,
+      weather: prefs.weather,
       dayLen: tStart + 7200,
     },
     daytime,
@@ -1146,7 +1190,9 @@ function refreshMenu() {
   const attempts = load('daily:' + d.key, []);
   const best = attempts.reduce((m, a) => Math.max(m, a.d), 0);
   $('dailyDesc').textContent =
-    `Heute: ${TERRAIN_NAMES[d.world.terrain]}, ${CLOUD_NAMES[d.world.clouds]}, Wind ${windText(d.world.wind)}. ` +
+    `Heute: ${TERRAIN_NAMES[d.world.terrain]}, ${CLOUD_NAMES[d.world.clouds]}` +
+    (d.world.weather !== 'normal' ? `, ${WEATHERS[d.world.weather].name}` : '') +
+    `, Wind ${windText(d.world.wind)}. ` +
     (best ? `Dein Rekord heute: ${km(best)}.` : 'Für alle gleich, fliege gegen deinen Rekordflug.');
   const done = load('lessons', {});
   const n = LESSONS.filter((L) => done[L.id]).length;

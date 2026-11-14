@@ -47,6 +47,9 @@ export class World {
     this.windMs = this.windKmh / 3.6;
     this.quality = o.quality ?? 1;
     this.clouds = o.clouds || 'cumulus';
+    // Wetterlage: normal, overdev (Überentwicklung mit Schauern), cirrus (Abschirmung), inversion (tiefe Basis)
+    this.weather = o.weather || 'normal';
+    this.storms = [];
     this.dayLen = o.dayLen || DAY_LEN;
     this.covers = [];
     // Fluglinien: 0 = sonnige Hangkante, 1 = Talmitte (nur im Gebirge)
@@ -202,6 +205,7 @@ export class World {
     const df = this.dayFactor(t);
     let b = this.terrain === 'mountain' ? 2250 + 850 * df : this.terrain === 'hills' ? 1350 + 1000 * df : 1120 + 950 * df;
     if (this.clouds === 'blue') b -= 200;
+    if (this.weather === 'inversion') b -= 400;
     return b;
   }
 
@@ -286,7 +290,58 @@ export class World {
   // rs: Zeitpunkt, ab dem die Thermikblase vom Boden aufsteigt
   makeThermal(sx, lane, tb, life, w0, r, seed, birds, extra = {}) {
     const slope = (this.groundAt(sx + 150, lane) - this.groundAt(sx - 150, lane)) / 300;
-    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+    // Überentwicklung: Etwa jeder vierte kräftige Bart, der nach 12:30 Uhr reift, wächst zum Schauer und lebt länger.
+    const cb =
+      this.weather === 'overdev' &&
+      this.clouds !== 'blue' &&
+      !extra.fixed &&
+      w0 > 2.4 &&
+      tb + 0.45 * life > 3600 &&
+      mulberry32(hash(seed, 'cb'))() < 0.25;
+    if (cb) life *= 1.5;
+    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), slope, lane, tb, rs: tb, life, w0, r, seed, birds, cb, ...extra };
+  }
+
+  // ---------- Wetterlagen ----------
+  // 0..1: wie weit ein Bart zum Schauer überentwickelt ist
+  storm(th, t) {
+    if (!th.cb) return 0;
+    const a = this.age(th, t);
+    return smoothstep(0.35, 0.6, a) * (1 - smoothstep(1.05, 1.3, a));
+  }
+
+  // 0..1: Abschirmung durch Schleierwolken. Sie ziehen in Bändern mit dem Höhenwind über das Gebiet.
+  shade(x, t) {
+    if (this.weather !== 'cirrus') return 0;
+    const u = x - (6 + 0.5 * this.windMs) * t;
+    return smoothstep(0.55, 0.68, noise2(this.seed + 61, u / 9000, 0.7));
+  }
+
+  // Wirkung der Wetterlage auf einen Bart: Abschirmung und die kalte Luft benachbarter Schauer schwächen ihn,
+  // ein überentwickelter Bart selbst trägt kaum noch. Pro Zeitpunkt zwischengespeichert.
+  weatherFactor(th, t) {
+    if (this.weather === 'normal' || this.weather === 'inversion') return 1;
+    if (th.wxT === t) return th.wx;
+    let f = 1 - 0.4 * this.shade(th.sx, t);
+    f *= 1 - 0.9 * this.storm(th, t);
+    for (const c of this.storms) {
+      if (c.th === th || c.lane !== (th.lane || 0)) continue;
+      const d = (th.sx - c.x) / 2000;
+      f *= 1 - 0.8 * c.s * Math.exp(-d * d);
+    }
+    th.wxT = t;
+    th.wx = f;
+    return f;
+  }
+
+  // Abwind unter einem Schauer: Regen und kalte Luft fallen bis zum Boden
+  rainSink(th, x, z, t) {
+    const st = this.storm(th, t);
+    if (st < 0.05) return 0;
+    const base = this.baseMSL(t);
+    if (z > base) return 0;
+    const d = (x - this.coreX(th, base, t)) / (this.radius(th) * 1.8);
+    return st * 2.8 * Math.exp(-d * d);
   }
 
   // Sonnenstand zur Rundenzeit t, für einen Zeitschritt zwischengespeichert
@@ -328,6 +383,11 @@ export class World {
       this.thermals = this.thermals.filter((th) => t <= th.tb + th.life * 1.3);
     }
     if (dt > 0) this.mergeThermals(t, dt);
+    this.storms = [];
+    for (const th of this.thermals) {
+      const st = this.storm(th, t);
+      if (st > 0.2) this.storms.push({ th, x: th.sx, lane: th.lane || 0, s: st });
+    }
   }
 
   // Nahe Bärte ziehen sich an und verschmelzen zu einem grossen, kräftigeren Bart.
@@ -434,7 +494,7 @@ export class World {
   }
 
   strength(th, t) {
-    let s = th.w0 * this.env(th, t) * this.dayFactor(t) * this.sunFactor(th, t);
+    let s = th.w0 * this.env(th, t) * this.dayFactor(t) * this.sunFactor(th, t) * this.weatherFactor(th, t);
     const tf = this.torn();
     // Zerrissene Bärte: schwächer und pulsierend
     if (tf > 0) s *= 1 - 0.15 * tf - 0.45 * tf * (0.5 + 0.5 * Math.sin(t / 35 + th.id * 1.7));
@@ -463,12 +523,25 @@ export class World {
     return this.windMs * prof + l * this.valleyWind(t) * (1 - smoothstep(400, 900, agl));
   }
 
-  ridge(x, z) {
-    if (this.terrain !== 'mountain' || !this.windMs) return 0;
+  // Hangaufwind auf der Luvseite. Im Lee sinkt es stärker, und bei kräftigem Wind wird es dort ruppig (Rotor).
+  ridge(x, z, t = 0) {
+    if (this.terrain === 'flat' || !this.windMs) return 0;
     const agl = z - this.ground(x);
-    if (agl > 400) return 0;
+    if (agl > 500) return 0;
     const slope = (this.ground(x + 40) - this.ground(x - 40)) / 80;
-    return this.windMs * slope * 1.6 * (1 - Math.max(0, agl) / 400);
+    const v = this.windMs * slope * 1.6;
+    if (v >= 0) return agl > 400 ? 0 : v * (1 - Math.max(0, agl) / 400);
+    const k = 1 - Math.max(0, agl) / 500;
+    const rotor = smoothstep(8, 20, Math.abs(this.windKmh)) * Math.min(1, Math.abs(slope) * 4);
+    return 1.3 * v * k + rotor * k * 2.4 * (noise2(this.seed + 31, x / 140, t / 5) - 0.5) * 2;
+  }
+
+  // Wie stark es an x im Lee sinkt und ruppig ist (0..1), für Fluglehrer und Anzeige
+  leeAt(x, z) {
+    if (this.terrain === 'flat' || Math.abs(this.windKmh) < 8) return 0;
+    const agl = z - this.ground(x);
+    const slope = (this.ground(x + 40) - this.ground(x - 40)) / 80;
+    return agl < 500 && slope * this.windMs < 0 ? Math.min(1, Math.abs(slope) * 4) * (1 - Math.max(0, agl) / 500) : 0;
   }
 
   // Vertikalbewegung der Luftmasse in m/s an der seitlichen Position l.
@@ -480,6 +553,7 @@ export class World {
     for (const th of this.thermals) {
       const lw = 1 - Math.abs(l - (th.lane || 0));
       if (lw <= 0.02) continue;
+      if (th.cb) w -= this.rainSink(th, x, z, t) * lw;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
       const top = this.topZ(th, t),
@@ -500,7 +574,7 @@ export class World {
       w += s * (core * f - ring);
       if (core > inCore) inCore = core;
     }
-    return w - (this.bgSink(x, t, l) + this.lakeSink(x, z, l)) * (1 - inCore) + this.ridge(x, z) * (1 - l);
+    return w - (this.bgSink(x, t, l) + this.lakeSink(x, z, l)) * (1 - inCore) + this.ridge(x, z, t) * (1 - l);
   }
 
   // Über Seen ist die Luft kühl und stabil: tief leichtes Sinken, das mit der Höhe abklingt
@@ -544,12 +618,15 @@ export class World {
     if (df < 0.45 && th.w0 * df < 0.9) return null;
     const size = smoothstep(0, 300, ca) * (a < 0.85 ? 1 : 1 - 0.6 * smoothstep(0.85, 1.3, a));
     const alpha = Math.min(1, ca / 40) * (a < 0.9 ? 1 : 1 - smoothstep(0.9, 1.3, a));
+    const x = this.coreX(th, base, t);
+    const storm = this.storm(th, t);
     return {
-      x: this.coreX(th, base, t),
+      x,
       lane: th.lane || 0,
       size: size * Math.sqrt(th.w0 / 2.2) * Math.sqrt(th.r / 210) * (0.5 + 0.5 * df),
-      alpha,
-      decay: smoothstep(0.62, 1.0, a),
+      alpha: Math.max(alpha, storm) * (1 - 0.5 * this.shade(x, t)),
+      decay: smoothstep(0.62, 1.0, a) * (1 - storm),
+      storm,
     };
   }
 }

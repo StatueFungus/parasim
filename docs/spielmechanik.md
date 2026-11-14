@@ -4,7 +4,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wetterlage, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
 - **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
@@ -44,6 +44,21 @@ Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5
 - **Waldkanten**: Liegt eine Quelle bis 350 m neben einer Grenze zwischen Wald und offenem Land, löst der Bart 40 m auf der offenen Seite aus und ist 10 % stärker.
 - **Seen**: keine Thermik; bis 900 m über dem Wasser sinkt es zusätzlich (bis 0.35 m/s direkt über dem Spiegel). Am Startplatz liegt nie ein See, an der Gebirgsflanke auch nicht.
 - Im Gebirge wächst an der Flanke oberhalb von 1650 m kein Wald mehr. Die Minimap zeigt Seen blau und Wälder dunkelgrün.
+
+## Wetterlagen
+
+Einstellung «Wetterlage» im Training und Wettkampf; die Tagesaufgabe hat an jedem zweiten Tag eine besondere Lage. Alles ist aus der Saat bestimmt.
+
+- **Normal**: ein guter Thermiktag.
+- **Überentwicklung**: Etwa jeder vierte kräftige Bart (über 2.4 m/s), der nach 12:30 Uhr reift, türmt sich zum Schauer auf und lebt 50 % länger. Unter dem Regen fällt kalte Luft (bis 2.8 m/s Sinken bis zum Boden), der Bart selbst trägt kaum noch. Bärte in der Umgebung werden schwächer (bis −80 % direkt daneben, Reichweite etwa 2 km). Nicht bei Blauthermik.
+- **Abschirmung**: Bänder aus Schleierwolken ziehen mit dem Höhenwind (6 m/s plus halber Bodenwind) durch und decken etwa ein Drittel der Strecke ab. Darunter ist die Thermik bis 40 % schwächer, die Cumulus verblassen, der Boden liegt im Halbschatten.
+- **Inversion**: Die Basis liegt 400 m tiefer. Die Wolken laufen flach und breit aus, darunter staut sich Dunst.
+
+Unabhängig von der Wetterlage gilt im Gebirge und Hügelland bei Wind:
+
+- **Lee und Rotor**: Auf der windabgewandten Seite sinkt es (30 % stärker als der Hangaufwind auf der Luvseite, bis 500 m über Grund). Ab etwa 8 km/h Wind wird es dort ruppig, bei 20 km/h schwankt das Steigen um bis zu ±2.4 m/s.
+
+Der Fluglehrer warnt vor Schauern in Flugrichtung, unter dem Regen, im Lee und einmal pro Flug vor Abschirmung.
 
 ## Sonnenstand
 

@@ -1,13 +1,13 @@
 // Headless-Abgleich: lässt die Bots über mehrere Saaten fliegen und gibt Distanzen aus.
-// Aufruf: node scripts/balance.mjs [terrain] [glider] [wind] [clouds]
+// Aufruf: node scripts/balance.mjs [terrain] [glider] [wind] [clouds] [weather]
 import { Session } from '../src/js/sim/session.js';
 
-const [terrain = 'flat', glider = 'EN-B', wind = '0', clouds = 'cumulus'] = process.argv.slice(2);
+const [terrain = 'flat', glider = 'EN-B', wind = '0', clouds = 'cumulus', weather = 'normal'] = process.argv.slice(2);
 const res = {};
 let turns = 0;
 const laneT = [0, 0];
 for (let seed = 1; seed <= 8; seed++) {
-  const s = new Session({ world: { seed, terrain, wind: +wind, clouds }, duration: 7200, penalty: 600 });
+  const s = new Session({ world: { seed, terrain, wind: +wind, clouds, weather }, duration: 7200, penalty: 600 });
   s.addBots(7, glider);
   while (!s.ended) s.step(60);
   for (const p of s.pilots) {

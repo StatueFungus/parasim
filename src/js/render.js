@@ -97,8 +97,9 @@ export class Renderer {
     this.warm = smoothstep(13.8, 15.3, sun.hour);
 
     this.drawSky(sun);
+    this.drawCirrus(s);
     this.drawFar(w);
-    this.drawHaze(w);
+    this.drawHaze(w, base);
     this.drawClouds(s, base, 0);
     if (w.laneCount > 1) this.drawClouds(s, base, 1);
     this.drawBaseLine(base);
@@ -141,9 +142,19 @@ export class Renderer {
   }
 
   // Morgendunst über dem Horizont, löst sich bis gegen 12:45 Uhr auf
-  drawHaze(w) {
-    if (this.haze < 0.01) return;
+  drawHaze(w, base) {
     const ctx = this.ctx;
+    if (w.weather === 'inversion') {
+      // Unter der Inversion staut sich der Dunst bis zur Basis
+      const top = this.sy(base);
+      const g = ctx.createLinearGradient(0, top, 0, this.H);
+      g.addColorStop(0, 'rgba(226,220,204,0.05)');
+      g.addColorStop(0.15, 'rgba(226,220,204,0.2)');
+      g.addColorStop(1, 'rgba(226,220,204,0.3)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, top, this.W, this.H - top);
+    }
+    if (this.haze < 0.01) return;
     const y = this.sy(w.ground(this.cam.x));
     const g = ctx.createLinearGradient(0, y, 0, y - this.H * 0.4);
     g.addColorStop(0, `rgba(234,240,245,${0.5 * this.haze})`);
@@ -263,10 +274,14 @@ export class Renderer {
       if ((th.lane || 0) !== lane) continue;
       const c = w.cloud(th, s.t);
       if (!c || c.alpha <= 0.02) continue;
-      const cw = 1500 * c.size * this.kx * (far ? 0.8 : 1);
-      const ch = 300 * c.size * this.ky * (far ? 0.8 : 1);
+      // Inversion: flach und breit auslaufend; Überentwicklung: hoch aufgetürmt mit dunkler Basis
+      const flat = w.weather === 'inversion';
+      const st = c.storm;
+      const cw = 1500 * c.size * this.kx * (far ? 0.8 : 1) * (flat ? 1.35 : 1) * (1 + 0.3 * st);
+      const ch = 300 * c.size * this.ky * (far ? 0.8 : 1) * (flat ? 0.5 : 1) * (1 + 2.2 * st);
       const cx = this.sx(c.x);
       if (cx + cw < 0 || cx - cw > this.W) continue;
+      if (st > 0.1) this.drawRain(cx, by, this.sy(w.groundAt(c.x, lane)), cw, st, w.windMs);
       ctx.save();
       ctx.globalAlpha = c.alpha * (1 - 0.35 * c.decay);
       // Flache Basis bei jungen Wolken; zerfallende Wolken fransen unten aus.
@@ -274,8 +289,8 @@ export class Renderer {
       ctx.rect(cx - cw * 2, 0, cw * 4, by + c.decay * 18);
       ctx.clip();
       const grad = ctx.createLinearGradient(0, by - ch * 1.3, 0, by);
-      const top = mix(far ? '#eef3fa' : '#ffffff', '#dfe4ea', c.decay);
-      const bot = mix(far ? '#bccadb' : '#c9d3de', '#a9b3bf', c.decay);
+      const top = mix(mix(far ? '#eef3fa' : '#ffffff', '#dfe4ea', c.decay), '#eceff3', st);
+      const bot = mix(mix(far ? '#bccadb' : '#c9d3de', '#a9b3bf', c.decay), '#4f5866', st);
       grad.addColorStop(0, top);
       grad.addColorStop(0.65, top);
       grad.addColorStop(1, bot);
@@ -292,6 +307,71 @@ export class Renderer {
       }
       ctx.restore();
     }
+  }
+
+  // Regenschleier unter einem Schauer, vom Wind leicht schräg gestellt
+  drawRain(cx, by, gy, cw, st, wind) {
+    const ctx = this.ctx;
+    const hw = cw * 0.35;
+    const lean = Math.max(-0.4, Math.min(0.4, wind / 25)) * (gy - by);
+    const g = ctx.createLinearGradient(0, by, 0, gy);
+    g.addColorStop(0, `rgba(88,98,114,${0.42 * st})`);
+    g.addColorStop(1, `rgba(88,98,114,${0.12 * st})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, by);
+    ctx.lineTo(cx + hw, by);
+    ctx.lineTo(cx + hw * 0.8 + lean, gy);
+    ctx.lineTo(cx - hw * 0.8 + lean, gy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = `rgba(200,210,225,${0.35 * st})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -3; i <= 3; i++) {
+      const x = cx + (i / 3.5) * hw;
+      ctx.moveTo(x, by + 6);
+      ctx.lineTo(x + lean * 0.9, gy - 4);
+    }
+    ctx.stroke();
+  }
+
+  // Schleierwolken hoch oben, wo sie gerade abschirmen; die Sonne scheint dort nur noch matt
+  drawCirrus(s) {
+    const w = s.world;
+    if (w.weather !== 'cirrus') return;
+    const ctx = this.ctx;
+    const veil = ctx.createLinearGradient(0, 0, this.W, 0);
+    const n = 16;
+    for (let i = 0; i <= n; i++) {
+      const a = w.shade(this.left + ((i / n) * this.W) / this.kx, s.t);
+      veil.addColorStop(i / n, `rgba(236,241,248,${0.45 * a})`);
+    }
+    ctx.fillStyle = veil;
+    // Nach unten weich auslaufen, darin ein paar feine Streifen
+    for (let k = 0; k < 8; k++) {
+      ctx.globalAlpha = 1 - k / 8;
+      ctx.fillRect(0, this.H * 0.06 * k, this.W, this.H * 0.06);
+    }
+    for (let k = 0; k < 5; k++) {
+      ctx.globalAlpha = 0.6 - 0.08 * k;
+      ctx.fillRect(0, this.H * (0.04 + 0.055 * k), this.W, 2 + (k % 2) * 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Unter Schleierwolken liegt der Boden im Halbschatten
+  drawCirrusShade(s) {
+    const w = s.world;
+    if (w.weather !== 'cirrus') return;
+    const g = this.ctx.createLinearGradient(0, 0, this.W, 0);
+    const n = 16;
+    for (let i = 0; i <= n; i++) {
+      const a = w.shade(this.left + ((i / n) * this.W) / this.kx, s.t);
+      g.addColorStop(i / n, `rgba(20,30,45,${0.2 * a})`);
+    }
+    this.ctx.fillStyle = g;
+    this.ctx.fillRect(0, 0, this.W, this.H);
   }
 
   drawBaseLine(base) {
@@ -347,6 +427,7 @@ export class Renderer {
     ctx.clip(path);
     if (w.terrain === 'mountain' && lane === 0) this.drawSlopeLight(pts, step, sun);
     this.drawCloudShadows(s, lane, sun, base);
+    this.drawCirrusShade(s);
     ctx.restore();
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
