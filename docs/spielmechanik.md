@@ -11,7 +11,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Runde, Zeitraffer und Basis
 
-- **Rundendauer**: 4 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 8, 12 oder 15 Minuten Echtzeit. Die Thermik baut sich in der ersten halben Stunde auf und lässt in der letzten halben Stunde nach.
+- **Rundendauer**: 4 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 10, 12 oder 15 Minuten Echtzeit (Standard 15, also 16-facher Zeitraffer). Die Thermik baut sich in der ersten halben Stunde auf und lässt in der letzten halben Stunde nach.
 - **Kreisen trotz Zeitraffer**: Je stärker die Runde rafft, desto langsamer dreht man in Flugzeit (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit immer etwa 5.5 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit. Steigen und Uhr laufen unverändert, man steigt also pro Kreis mehr.
 - **Wolkenbasis** (bei voll entwickelter Thermik): Flachland 2400 m, Hügelland 2650 m, Gebirge 3900 m; morgens rund 800 m (Gebirge 850 m) tiefer. Blauthermik 200 m tiefer.
 - **Abgleich** (`npm run balance`): Mit EN-B schafft der beste Bot pro Tag im Mittel 75–90 km, die Bestweiten liegen um 100 km, mit CCC im Gebirge bis über 130 km. Gegenwind, Blauthermik und Schulschirme liegen deutlich darunter.

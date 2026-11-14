@@ -21,7 +21,7 @@ const prefs = Object.assign(
     wind: 0,
     quality: 1,
     bots: 3,
-    len: 12,
+    minutes: 15,
     sound: true,
     coach: true,
     thermals: false,
@@ -31,8 +31,9 @@ const prefs = Object.assign(
   },
   load('prefs', {}),
 );
-// Ältere Spielstände kannten 6 und 20 Minuten
-if (![8, 12, 15].includes(prefs.len)) prefs.len = 12;
+// Echtzeit pro Runde; früher unter «len» mit anderen Stufen gespeichert, das wird bewusst nicht übernommen
+delete prefs.len;
+if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 15;
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
@@ -119,7 +120,7 @@ function dailyCfg() {
     },
     glider: 'EN-B',
     bots: 3,
-    len: 12,
+    len: 15,
     penalty: 600,
   };
 }
@@ -153,7 +154,7 @@ function pbKey(cfg) {
 }
 
 // ---------- Spielstart ----------
-// Eine Runde dauert 4 Flugstunden; in 8 bis 15 Minuten Echtzeit (Lektionen haben eigene Längen)
+// Eine Runde dauert 4 Flugstunden; in 10 bis 15 Minuten Echtzeit, Standard 15 (Lektionen haben eigene Längen)
 const ROUND = 14400;
 
 function startGame(cfg) {
@@ -164,7 +165,7 @@ function startGame(cfg) {
     world: cfg.world,
     duration,
     tStart: cfg.tStart ?? 0,
-    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 12) * 60),
+    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 15) * 60),
     penalty: cfg.penalty ?? 0,
   });
   cfg.centering ??= prefs.centering;
@@ -1047,7 +1048,7 @@ segInit('sGlider', 'glider');
 segInit('sTerrain', 'terrain');
 segInit('sClouds', 'clouds');
 segInit('sQuality', 'quality', Number);
-segInit('sLen', 'len', Number);
+segInit('sLen', 'minutes', Number);
 segInit('sCenter', 'centering');
 segInit('sDaytime', 'daytime');
 const daytimeLabel = () => {
@@ -1107,7 +1108,7 @@ $('setupGo').onclick = () => {
     tStart,
     glider: prefs.glider,
     bots: prefs.bots,
-    len: prefs.len,
+    len: prefs.minutes,
     penalty: setupMode === 'race' ? 1800 : 0,
   });
 };

@@ -9,7 +9,7 @@
 
 Streckenflug-Simulator für Gleitschirmpiloten im Browser: Thermik finden, hochkreisen, weit gleiten.
 
-Eine Runde simuliert vier Flugstunden ab 11:30 Uhr in 8 bis 15 Minuten Echtzeit; gute Piloten kommen an starken Tagen um die 100 km weit. Thermik entsteht, wächst von unten zur Wolkenbasis, verschmilzt und zerfällt. Wind versetzt die Bärte, im Gebirge entscheidet die Linienwahl. Wer will, zentriert selbst mit einem stufenlosen Kurvenschieber.
+Eine Runde simuliert vier Flugstunden ab 11:30 Uhr in 10 bis 15 Minuten Echtzeit; gute Piloten kommen an starken Tagen um die 100 km weit. Thermik entsteht, wächst von unten zur Wolkenbasis, verschmilzt und zerfällt. Wind versetzt die Bärte, im Gebirge entscheidet die Linienwahl. Wer will, zentriert selbst mit einem stufenlosen Kurvenschieber.
 
 - **Modi**: Freies Training, Tagesaufgabe mit Rekordflug-Geist, Wettkampf gegen bis zu 7 Computerpiloten, Lernpfad mit 9 Lektionen
 - **Physik**: Polaren EN-A bis CCC, MacCready-Sollfahrt, Thermik-Lebenszyklus, Windprofil, Hangaufwind, Talwind

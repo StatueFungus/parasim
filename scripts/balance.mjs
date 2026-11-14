@@ -15,7 +15,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   const s = new Session({
     world: { seed, terrain, wind: +wind, clouds, dayLen: DURATION },
     duration: DURATION,
-    rate: DURATION / 720,
+    rate: DURATION / 900,
     penalty: 600,
   });
   s.addBots(7, glider);
