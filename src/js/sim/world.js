@@ -6,7 +6,43 @@ export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
 const GROW = 2; // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
 const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
+const FLANK_X = 1500; // Hangthermik: so weit reicht die Flanke vom Gipfelbart hinunter (waagrecht, m)
+const FLANK_Z = 900; // und so tief unter den Gipfel (m)
+const FLANK_AGL = 300; // nur in dieser Schicht über dem Hang steigt es
+const HANG_L = 0.85; // Hangbärte lösen am Hang nahe der Talmitte aus (seitliche Position 0 = Kante, 1 = Tal)
 const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
+
+// Bodenbedeckung: wie gut der Boden Thermik auslöst. Über Seen gibt es keine, dafür leichtes Sinken.
+export const COVER_LIFT = { field: 1.1, meadow: 0.95, forest: 0.6, village: 1.15, lake: 0, rock: 1.1 };
+const COVER_MIX = {
+  flat: [
+    ['field', 4],
+    ['meadow', 3],
+    ['forest', 2],
+    ['village', 1],
+    ['lake', 1.1],
+  ],
+  hills: [
+    ['meadow', 3],
+    ['forest', 2.5],
+    ['field', 2.5],
+    ['village', 1],
+    ['lake', 0.6],
+  ],
+  ridge: [
+    ['meadow', 3],
+    ['forest', 2],
+  ],
+  valley: [
+    ['meadow', 3],
+    ['field', 2],
+    ['village', 1.2],
+    ['forest', 1],
+    ['lake', 0.6],
+  ],
+};
+// Wie stark sich der Boden in der Sonne erwärmt; an Kanten zwischen warm und kühl lösen Bärte ab
+const WARMTH = { village: 3, field: 2.5, rock: 2.5, meadow: 1.5, forest: 0.6, lake: 0 };
 
 export class World {
   constructor(o = {}) {
@@ -17,6 +53,7 @@ export class World {
     this.quality = o.quality ?? 1;
     this.clouds = o.clouds || 'cumulus';
     this.dayLen = o.dayLen || DAY_LEN;
+    this.covers = [];
     // Fluglinien: 0 = sonnige Hangkante, 1 = Talmitte (nur im Gebirge)
     this.laneCount = this.terrain === 'mountain' ? 2 : 1;
     this.sources = [];
@@ -36,7 +73,8 @@ export class World {
       this.launchBump = this.launchH - this.mtnBase(0);
     }
     this.launchGround = this.ground(0);
-    this.launchZ = this.terrain === 'mountain' ? this.launchGround + 25 : this.launchGround + (o.towHeight ?? 600);
+    this.launchZ =
+      this.terrain === 'mountain' ? this.launchGround + 25 : this.launchGround + (o.towHeight ?? (this.terrain === 'hills' ? 750 : 600));
     this.ensure(-6000, 30000);
     for (const def of o.extraThermals || []) this.addThermal(def);
   }
@@ -49,11 +87,21 @@ export class World {
   }
 
   valley(x) {
+    return this.lakeFlat(x, 1, this.valleyBase(x), (u) => this.valleyBase(u));
+  }
+
+  valleyBase(x) {
     const v = 470 + 0.22 * (this.mtnBase(x) - 620) + 50 * (noise2(this.seed + 17, x / 1800, 0.4) - 0.5);
     return Math.min(this.ground(x) - 250, v);
   }
 
+  // Boden mit Seen: Die Wasserfläche liegt waagrecht, zum Ufer hin geht das Gelände weich über.
   ground(x) {
+    const g = this.groundBase(x);
+    return this.terrain === 'mountain' ? g : this.lakeFlat(x, 0, g, (u) => this.groundBase(u));
+  }
+
+  groundBase(x) {
     if (this.terrain === 'mountain') {
       const g = this.mtnBase(x) + this.launchBump * Math.exp(-((x / 900) ** 2));
       if (x <= 0) return g;
@@ -61,7 +109,123 @@ export class World {
       const w = 1 - smoothstep(3000, 5000, x);
       return g * (1 - w) + Math.min(g, this.launchH - 40 - 0.2 * x) * w;
     }
+    if (this.terrain === 'hills') {
+      const h = 470 + 650 * Math.max(0, fbm(this.seed + 3, x / 3200, 4) - 0.3) + 25 * (noise2(this.seed + 5, x / 500, 0.3) - 0.5);
+      // Der Windenplatz liegt in einer ebenen Mulde
+      return h + (470 - h) * Math.exp(-((x / 700) ** 2));
+    }
     return 420 + 40 * (fbm(this.seed + 3, x / 4000, 3) - 0.5) + 8 * (noise2(this.seed + 5, x / 350, 0.3) - 0.5);
+  }
+
+  lakeFlat(x, lane, g, base) {
+    const c = this.coverSeg(x, lane);
+    if (c.type !== 'lake') return g;
+    c.level ??= Math.min(base(c.a), base(c.b), base((c.a + c.b) / 2)) - 6;
+    const k = smoothstep(0, 90, Math.min(x - c.a, c.b - x));
+    return g + (Math.min(g, c.level) - g) * k;
+  }
+
+  // ---------- Bodenbedeckung ----------
+  // Abschnitte von 300 bis 2500 m, aus der Saat bestimmt. Lane 0 im Gebirge ist die Flanke (nur Wiese und Wald).
+  coverSeg(x, lane = 0) {
+    let list = this.covers[lane];
+    if (!list) {
+      list = this.covers[lane] = [];
+      list.end = -12000;
+    }
+    while (list.end <= x) {
+      const i = list.length;
+      const r = mulberry32(hash(this.seed, 'cov' + lane, i));
+      const kind = this.terrain === 'mountain' ? (lane ? 'valley' : 'ridge') : this.terrain;
+      const mix = COVER_MIX[kind];
+      const total = mix.reduce((n, [, w]) => n + w, 0);
+      let type;
+      // Kein See am Startplatz und nie zwei Seen hintereinander
+      do {
+        let v = r() * total;
+        type = mix.find(([, w]) => (v -= w) < 0)?.[0] ?? mix[0][0];
+      } while (type === 'lake' && (list.at(-1)?.type === 'lake' || (list.end < 1800 && list.end > -2800)));
+      const len = type === 'lake' ? 350 + 900 * r() : type === 'village' ? 300 + 500 * r() : 500 + 2000 * r();
+      list.push({ a: list.end, b: list.end + len, type });
+      list.end += len;
+    }
+    let lo = 0,
+      hi = list.length - 1;
+    while (lo < hi) {
+      const m = (lo + hi + 1) >> 1;
+      if (list[m].a <= x) lo = m;
+      else hi = m - 1;
+    }
+    return list[lo];
+  }
+
+  // Art des Bodens an x; im Gebirge oberhalb der Baumgrenze Wiese, ganz oben Fels
+  coverAt(x, lane = 0) {
+    const type = this.coverSeg(x, lane).type;
+    if (this.terrain !== 'mountain' || lane) return type;
+    const g = this.ground(x);
+    return g > 2050 ? 'rock' : type === 'forest' && g > 1650 ? 'meadow' : type;
+  }
+
+  // Abrisskante: Wechsel des Untergrunds innerhalb von d Metern. Der Bart löst 40 m auf der wärmeren Seite aus,
+  // umso kräftiger, je grösser der Unterschied ist. Liefert { x, boost } oder null.
+  coverEdge(x, lane, d) {
+    const c = this.coverSeg(x, lane);
+    let best = null;
+    for (const [b, inward] of [
+      [c.a, 1],
+      [c.b, -1],
+    ]) {
+      if (Math.abs(b - x) > d) continue;
+      const other = this.coverSeg(b - inward, lane);
+      if (other.type === c.type) continue;
+      const dw = WARMTH[c.type] - WARMTH[other.type];
+      if (best && Math.abs(best.b - x) < Math.abs(b - x)) continue;
+      best = { b, x: dw >= 0 ? b + inward * 40 : b - inward * 40, boost: 1 + 0.06 * Math.min(3, Math.abs(dw)) };
+    }
+    return best;
+  }
+
+  // Hangthermik: Unter einem Gipfelbart zieht die erwärmte Luft die Flanken hinauf und sammelt sich am Gipfel.
+  // Nah am Hang steigt es deshalb schon unterhalb des Grats, umso stärker, je näher man dem Gipfel kommt.
+  // Liefert den Anteil 0..1 an der Stärke des Barts, ohne Rücksicht auf die Höhe über Grund.
+  flankShare(th, x) {
+    if (this.terrain !== 'mountain' || th.lane) return 0;
+    const d = th.sx - x;
+    if (Math.abs(d) > FLANK_X) return 0;
+    const g = this.ground(x);
+    const drop = th.gz - g;
+    if (drop < 15 || drop > FLANK_Z) return 0;
+    // Nur wo das Gelände zum Gipfel hin ansteigt
+    if (this.ground(x + Math.sign(d) * 60) <= g) return 0;
+    return 0.55 * (1 - drop / FLANK_Z) * (1 - Math.abs(d) / FLANK_X);
+  }
+
+  flankLift(th, x, z, s) {
+    const share = this.flankShare(th, x);
+    if (!share) return 0;
+    const agl = z - this.ground(x);
+    return agl < 0 || agl > FLANK_AGL ? 0 : s * share * (1 - agl / FLANK_AGL);
+  }
+
+  // Höchster Punkt im Umkreis von d Metern: Gipfel und Grate lösen Bärte aus
+  peakNear(x, d) {
+    let bx = x,
+      bz = this.ground(x);
+    for (let u = x - d; u <= x + d; u += 50) {
+      const z = this.ground(u);
+      if (z > bz) {
+        bz = z;
+        bx = u;
+      }
+    }
+    return bx;
+  }
+
+  // Höhe gegenüber der Umgebung: positiv auf Gipfeln und Graten, negativ in Senken zwischen den Bergen
+  prominence(x) {
+    const g = (u) => this.ground(u);
+    return g(x) - (g(x - 2500) + g(x - 1200) + g(x + 1200) + g(x + 2500)) / 4;
   }
 
   mtnBase(x) {
@@ -86,21 +250,43 @@ export class World {
 
   baseMSL(t) {
     const df = this.dayFactor(t);
-    let b = this.terrain === 'mountain' ? 2250 + 850 * df : 1120 + 950 * df;
+    let b = this.terrain === 'mountain' ? 2250 + 850 * df : this.terrain === 'hills' ? 1350 + 1000 * df : 1120 + 950 * df;
     if (this.clouds === 'blue') b -= 200;
     return b;
   }
 
   // ---------- Thermikquellen ----------
   // Hangkante: dichte, kräftige Thermik an den sonnigen Flanken. Talmitte: wenig und schwach, dafür tiefer Boden.
+  // Bodenbedeckung: Waldkanten ziehen Bärte an, über Seen entsteht keine Thermik.
   makeSource(i, x, lane = 0) {
     const r = mulberry32(lane ? hash(this.seed, 's' + lane, i) : hash(this.seed, 's', i));
     let q = 0.75 + 0.5 * r();
-    if (this.terrain === 'mountain') {
-      q *= lane ? 0.7 : 1.05 * (0.85 + 0.75 * clamp((this.ground(x) - 650) / 1500, 0, 1));
+    let edge = null,
+      none = false;
+    if (this.terrain === 'mountain' && !lane) {
+      // Flanke: Bärte an Gipfeln und Graten, umso kräftiger, je höher; in Senken zwischen den Gipfeln schwach
+      x = this.peakNear(x, 600);
+      q *= (0.65 + 0.95 * clamp((this.ground(x) - 900) / 1500, 0, 1)) * clamp(1 + this.prominence(x) / 500, 0.3, 1.3);
+    } else {
+      edge = this.coverEdge(x, lane, 400);
+      if (edge) {
+        x = edge.x;
+        q *= edge.boost;
+      } else if (this.terrain === 'hills') x = this.peakNear(x, 400);
+      if (this.terrain === 'hills') {
+        q *= (0.9 + 0.35 * clamp((this.ground(x) - 470) / 400, 0, 1)) * clamp(1 + this.prominence(x) / 300, 0.6, 1.3);
+      }
+      // Talmitte: wenig und schwache Thermik, oft gar keine
+      if (this.terrain === 'mountain') {
+        q *= 0.5;
+        none = r() < 0.4;
+      }
     }
     q *= 1 + 0.25 * this.street(x);
-    return { i, x, q, lane, rng: r, next: -r() * 1800 - 60 };
+    const cover = this.coverAt(x, lane);
+    // Obergrenze, damit sich Höhe, Kante und Boden nicht zu Monsterbärten aufschaukeln
+    q = Math.min(1.9, q * COVER_LIFT[cover]);
+    return { i, x, q, lane, cover, edge: !!edge, rng: r, next: cover === 'lake' || none ? Infinity : -r() * 1800 - 60 };
   }
 
   spacing(i, x, lane = 0) {
@@ -157,14 +343,47 @@ export class World {
         ),
       );
     }
+    // Hangbart: Unter einem Gipfel löst am Hang zur Talseite ein eigener Bart aus und zieht schräg zum Gipfel hinauf
+    if (this.terrain === 'mountain' && src.lane === 0) {
+      const hr = mulberry32(hash(this.seed, 'hang', src.i, Math.round(tb)));
+      if (this.prominence(src.x) > 60 && hr() < 0.6) {
+        out.push(
+          this.makeThermal(
+            sx + (hr() - 0.5) * 400,
+            1,
+            tb - 60 - 240 * hr(),
+            life * 0.85,
+            w0 * (0.6 + 0.2 * hr()),
+            rad * 0.85,
+            hash(this.seed, 'h', src.i, Math.round(tb)),
+            false,
+            { hang: true },
+          ),
+        );
+      }
+    }
     src.next = tb + life + gap;
     return out;
   }
 
   // rs: Zeitpunkt, ab dem die Thermikblase vom Boden aufsteigt
   makeThermal(sx, lane, tb, life, w0, r, seed, birds, extra = {}) {
-    const slope = (this.groundAt(sx + 150, lane) - this.groundAt(sx - 150, lane)) / 300;
-    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+    // Hangbärte stehen am Hang zwischen Tal und Kante; sie enden auf Höhe des Gipfels (peakZ)
+    const gl = extra.hang ? HANG_L : lane;
+    if (extra.hang) extra.peakZ = Math.max(this.ground(sx), this.groundAt(sx, gl) + 150);
+    const slope = (this.groundAt(sx + 150, gl) - this.groundAt(sx - 150, gl)) / 300;
+    return { id: this.nextId++, sx, gz: this.groundAt(sx, gl), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+  }
+
+  // Seitliche Lage eines Barts auf Höhe z: Hangbärte ziehen mit der Höhe vom Hang zur Kante (HANG_L → 0)
+  laneOf(th, z) {
+    if (!th.hang) return th.lane || 0;
+    return HANG_L * (1 - clamp((z - th.gz) / (th.peakZ - th.gz), 0, 1));
+  }
+
+  // Wie viel von einem Bart an der seitlichen Position l ankommt
+  laneWeight(th, z, l) {
+    return 1 - Math.abs(l - this.laneOf(th, z));
   }
 
   // Sonnenstand zur Rundenzeit t, für einen Zeitschritt zwischengespeichert
@@ -209,14 +428,16 @@ export class World {
   }
 
   // Nahe Bärte ziehen sich an und verschmelzen zu einem grossen, kräftigeren Bart.
+  // Ein schon verschmolzener Bart verschmilzt nicht noch einmal, sonst wächst er an einem Gipfel,
+  // an dem immer wieder neue Bärte auslösen, ohne Grenze.
   mergeThermals(t, dt) {
     const list = this.thermals;
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
-      if (a.fixed || this.env(a, t) <= 0) continue;
+      if (a.fixed || a.merged || this.env(a, t) <= 0) continue;
       for (let j = i + 1; j < list.length; j++) {
         const b = list[j];
-        if (b.fixed || b.lane !== a.lane || this.env(b, t) <= 0) continue;
+        if (b.fixed || b.merged || b.hang || a.hang || b.lane !== a.lane || this.env(b, t) <= 0) continue;
         const d = b.sx - a.sx,
           reach = a.r + b.r;
         if (Math.abs(d) > 0.95 * reach) continue;
@@ -236,7 +457,7 @@ export class World {
           a.lane,
           t - 0.3 * life,
           life,
-          Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0),
+          Math.max(Math.min(5.5, Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0)), a.w0, b.w0),
           Math.hypot(a.r, b.r) * 0.95,
           hash(this.seed, 'm', a.seed, b.seed),
           a.birds || b.birds,
@@ -356,12 +577,17 @@ export class World {
     let w = 0,
       inCore = 0;
     for (const th of this.thermals) {
-      const lw = 1 - Math.abs(l - (th.lane || 0));
+      const lw = this.laneWeight(th, z, l);
       if (lw <= 0.02) continue;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
       const top = this.topZ(th, t),
         bot = this.bottomZ(th, t);
+      // Unter dem Auslösepunkt gibt es noch keine Säule (auch keinen Sinkring), am Gipfel aber die Hangthermik
+      if (z < th.gz - 30) {
+        if (bot === -Infinity) w += this.flankLift(th, x, z, s);
+        continue;
+      }
       if (z > top + 80 || z < bot - 80) continue;
       const dx = x - this.coreX(th, z, t);
       const q = (y ? Math.hypot(dx, y) : Math.abs(dx)) / this.radiusAt(th, z, t);
@@ -371,6 +597,8 @@ export class World {
       const h = z - th.gz;
       let f = h < 80 ? 0.35 + (0.65 * Math.max(0, h)) / 80 : 1;
       f *= smoothstep(top + 80, top - 40, z);
+      // Der Hangbart endet am Gipfel, darüber übernimmt der Gipfelbart
+      if (th.hang) f *= smoothstep(th.peakZ + 250, th.peakZ - 50, z);
       if (bot > -Infinity) f *= smoothstep(bot - 80, bot + 40, z);
       // Unter der Wolke wird es stärker (Kondensationswärme), bei Blauthermik bremst die Inversion.
       if (this.clouds !== 'blue') f *= 1 + CLOUD_BOOST * smoothstep(base - 450, base - 40, z);
@@ -378,14 +606,23 @@ export class World {
       w += s * (core * f - ring);
       if (core > inCore) inCore = core;
     }
-    return w - this.bgSink(x, t, l) * (1 - inCore) + this.ridge(x, z) * (1 - l);
+    return w - (this.bgSink(x, t, l) + this.lakeSink(x, z, l)) * (1 - inCore) + this.ridge(x, z) * (1 - l);
   }
 
-  nearestCore(x, z, t, lane = 0, y = 0) {
+  // Über Seen ist die Luft kühl und stabil: tief leichtes Sinken, das mit der Höhe abklingt
+  lakeSink(x, z, l = 0) {
+    const lane = this.laneCount > 1 && l > 0.5 ? 1 : 0;
+    if (this.coverSeg(x, lane).type !== 'lake') return 0;
+    const agl = z - this.groundAt(x, l);
+    return agl < 900 ? 0.35 * (1 - agl / 900) : 0;
+  }
+
+  // l: genaue seitliche Position; Hangbärte zählen, wenn genug von ihnen dort ankommt
+  nearestCore(x, z, t, lane = 0, y = 0, l = lane) {
     let best = null,
       bq = Infinity;
     for (const th of this.thermals) {
-      if ((th.lane || 0) !== lane) continue;
+      if (th.hang ? this.laneWeight(th, z, l) < 0.3 : (th.lane || 0) !== lane) continue;
       const s = this.strength(th, t);
       if (s < 0.2) continue;
       if (z > this.topZ(th, t) + 40 || z < this.bottomZ(th, t) - 40) continue;
@@ -403,7 +640,7 @@ export class World {
   // Darstellungszustand der Wolke über einer Thermik (null = keine Wolke).
   // Die Wolke entsteht erst, wenn die Blase die Basis erreicht, und wächst dann einige Minuten.
   cloud(th, t) {
-    if (this.clouds === 'blue') return null;
+    if (this.clouds === 'blue' || th.hang) return null;
     const a = this.age(th, t);
     if (a > 1.3) return null;
     const base = this.baseMSL(t);

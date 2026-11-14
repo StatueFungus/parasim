@@ -1,8 +1,14 @@
 import { mulberry32, noise2, smoothstep } from './sim/rng.js';
-import { shadowShift, slopeLight } from './sim/sun.js';
 import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
+// Farbe des Bodenstreifens je Bodenart; Wiese und Fels zeigen die Grundfarbe des Geländes
+const COVER_COLORS = {
+  field: 'rgba(214,186,96,0.85)',
+  forest: '#2f5a2d',
+  village: 'rgba(196,180,158,0.9)',
+  lake: '#4f93c4',
+};
 const TOP_PAD = 70;
 
 export class Renderer {
@@ -95,10 +101,11 @@ export class Renderer {
     this.drawClouds(s, base, 0);
     if (w.laneCount > 1) this.drawClouds(s, base, 1);
     this.drawBaseLine(base);
-    this.drawGround(s, 0, sun, base);
+    this.drawGround(s, 0);
     if (o.showThermals) this.drawThermals(s, 0);
+    if (o.showThermals && w.laneCount > 1) this.drawHangThermals(s);
     if (w.laneCount > 1) {
-      this.drawGround(s, 1, sun, base);
+      this.drawGround(s, 1);
       if (o.showThermals) this.drawThermals(s, 1);
     }
     this.drawLight();
@@ -188,7 +195,7 @@ export class Renderer {
     ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
     for (const th of w.thermals) {
-      if ((th.lane || 0) !== lane) continue;
+      if ((th.lane || 0) !== lane || th.hang) continue;
       const st = w.strength(th, s.t);
       if (st < 0.15) continue;
       const zTop = Math.min(w.topZ(th, s.t), base),
@@ -220,6 +227,20 @@ export class Renderer {
           y0 = this.sy(z0 + dz);
         ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
       }
+      // Hangthermik: ein Band am Hang, das zum Gipfel hin kräftiger wird
+      if (w.terrain === 'mountain' && lane === 0 && w.bottomZ(th, s.t) === -Infinity) {
+        ctx.lineCap = 'butt';
+        ctx.lineWidth = Math.max(3, 160 * this.ky);
+        for (let u = th.sx - 1500; u < th.sx + 1500; u += 40) {
+          const share = w.flankShare(th, u + 20);
+          if (!share) continue;
+          ctx.strokeStyle = `rgba(${rgb},${Math.min(0.3, a0 * 1.8 * share)})`;
+          ctx.beginPath();
+          ctx.moveTo(this.sx(u), this.sy(w.ground(u) + 90));
+          ctx.lineTo(this.sx(u + 40), this.sy(w.ground(u + 40) + 90));
+          ctx.stroke();
+        }
+      }
       // Auslösepunkt am Boden
       ctx.fillStyle = `rgba(${rgb},0.8)`;
       ctx.beginPath();
@@ -227,6 +248,51 @@ export class Renderer {
       ctx.fill();
       ctx.fillStyle = 'rgba(120,50,0,0.75)';
       ctx.fillText(st.toFixed(1), xTop, this.sy(zTop) + 16 + lane * 13);
+    }
+  }
+
+  // Hangbärte stehen zwischen Tal und Kante: unten vorn (gelb wie im Tal), oben hinten am Gipfel (orange wie an der Kante).
+  // Mit der Tiefe werden sie schmaler, so zieht der Bart sichtbar schräg nach hinten oben.
+  drawHangThermals(s) {
+    const ctx = this.ctx,
+      w = s.world;
+    for (const th of w.thermals) {
+      if (!th.hang) continue;
+      const st = w.strength(th, s.t);
+      if (st < 0.15) continue;
+      const zBot = Math.max(th.gz, w.bottomZ(th, s.t)),
+        zTop = Math.min(w.topZ(th, s.t), th.peakZ + 200);
+      if (zTop - zBot < 20) continue;
+      const cx0 = this.sx(w.coreX(th, zBot, s.t));
+      if (cx0 < -400 || cx0 > this.W + 400) continue;
+      const a0 = Math.min(0.42, st / 8);
+      const slices = 24,
+        dz = (zTop - zBot) / slices;
+      for (let i = 0; i < slices; i++) {
+        const z0 = zBot + i * dz,
+          zm = z0 + dz / 2;
+        const k = w.laneOf(th, zm) / 0.85; // 1 vorn am Hang, 0 hinten am Gipfel
+        const cx = this.sx(w.coreX(th, zm, s.t));
+        const hw = w.radiusAt(th, zm, s.t) * 1.6 * this.kx * (0.75 + 0.25 * k);
+        const rgb = `255,${Math.round(140 + 60 * k)},${Math.round(40 + 20 * k)}`;
+        const fade = zm > th.peakZ ? Math.max(0, 1 - (zm - th.peakZ) / 200) : 1;
+        const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+        g.addColorStop(0, `rgba(${rgb},0)`);
+        g.addColorStop(0.5, `rgba(${rgb},${a0 * fade})`);
+        g.addColorStop(1, `rgba(${rgb},0)`);
+        ctx.fillStyle = g;
+        const y1 = this.sy(z0),
+          y0 = this.sy(z0 + dz);
+        ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
+      }
+      ctx.fillStyle = 'rgba(255,200,60,0.8)';
+      ctx.beginPath();
+      ctx.arc(this.sx(th.sx), this.sy(th.gz) - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(120,50,0,0.75)';
+      ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(st.toFixed(1), cx0, this.sy(th.gz) - 8);
     }
   }
 
@@ -300,20 +366,29 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawGround(s, lane, sun, base) {
+  // Gelände und Bodenarten werden auf einem festen Raster in Weltkoordinaten abgetastet (etwa alle 3 px).
+  // So bleiben Kanten und Grenzen beim Schwenken der Kamera ruhig, statt von Spalte zu Spalte zu springen.
+  groundGrid(w, lane) {
+    const g = 3 / this.kx;
+    const k0 = Math.floor(this.left / g) - 1,
+      k1 = Math.ceil((this.left + this.W / this.kx) / g) + 1;
+    const pts = [];
+    for (let k = k0; k <= k1; k++) {
+      const x = k * g;
+      pts.push({ x, px: this.sx(x), py: this.sy(w.groundAt(x, lane)) });
+    }
+    return pts;
+  }
+
+  drawGround(s, lane) {
     const ctx = this.ctx,
       w = s.world;
-    const step = 3;
     const two = w.laneCount > 1;
+    const pts = this.groundGrid(w, lane);
     const path = new Path2D();
-    path.moveTo(0, this.H);
-    const pts = [];
-    for (let px = 0; px <= this.W + step; px += step) {
-      const y = this.sy(w.groundAt(this.left + px / this.kx, lane));
-      pts.push(y);
-      path.lineTo(px, y);
-    }
-    path.lineTo(this.W, this.H);
+    path.moveTo(pts[0].px, this.H);
+    for (const p of pts) path.lineTo(p.px, p.py);
+    path.lineTo(pts.at(-1).px, this.H);
     path.closePath();
     let g;
     if (w.terrain === 'mountain' && lane === 0) {
@@ -336,71 +411,110 @@ export class Renderer {
     }
     ctx.fillStyle = g;
     ctx.fill(path);
-    ctx.save();
-    ctx.clip(path);
-    if (w.terrain === 'mountain' && lane === 0) this.drawSlopeLight(pts, step, sun);
-    this.drawCloudShadows(s, lane, sun, base);
-    ctx.restore();
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y) : ctx.moveTo(0, y)));
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)));
     ctx.stroke();
     if (two && lane === 1) {
       // Fluss im Talboden
       ctx.strokeStyle = 'rgba(140,195,235,0.6)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y + 9) : ctx.moveTo(0, y + 9)));
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py + 9) : ctx.moveTo(p.px, p.py + 9)));
       ctx.stroke();
     }
+    this.drawCover(w, lane, pts);
+    this.drawCoverTops(w, lane);
   }
 
-  // Flanken, die zur Sonne zeigen, hell; abgewandte im Schatten. Mittags steht die Sonne im Süden, dann gleich.
-  // Ein weicher waagrechter Verlauf über den ganzen Hang, in einem Zug gezeichnet.
-  drawSlopeLight(pts, step, sun) {
+  // Bodenbedeckung als Streifen unter der Oberfläche; Seen mit heller Wasserlinie.
+  // Läufe gleicher Bodenart enden genau an der Abschnittsgrenze aus der Welt, nicht an einem Rasterpunkt.
+  drawCover(w, lane, pts) {
     const ctx = this.ctx;
-    const k = this.kx / this.ky;
-    const n = pts.length - 1;
-    const g = ctx.createLinearGradient(0, 0, n * step, 0);
-    for (let i = 0; i <= n; i += 4) {
-      const a = Math.max(0, i - 8),
-        b = Math.min(n, i + 8);
-      const slope = (-(pts[b] - pts[a]) / ((b - a) * step)) * k;
-      const l = slopeLight(sun, slope);
-      const rel = (2 * l) / (l + slopeLight(sun, -slope));
-      g.addColorStop(
-        i / n,
-        rel >= 1 ? `rgba(255,238,190,${Math.min(0.2, 1.2 * (rel - 1))})` : `rgba(30,40,60,${Math.min(0.32, 1.6 * (1 - rel))})`,
-      );
+    const depth = w.laneCount > 1 && lane === 0 ? 8 : 12;
+    const paths = {},
+      shore = new Path2D();
+    const at = (x) => ({ px: this.sx(x), py: this.sy(w.groundAt(x, lane)) });
+    let run = null;
+    const close = (end) => {
+      if (!run || !COVER_COLORS[run.type]) return;
+      const top = [run.start, ...run.mid, end];
+      const d = run.type === 'lake' ? depth * 1.5 : depth;
+      const p = (paths[run.type] ??= new Path2D());
+      p.moveTo(top[0].px, top[0].py);
+      for (const q of top) p.lineTo(q.px, q.py);
+      for (let i = top.length - 1; i >= 0; i--) p.lineTo(top[i].px, top[i].py + d);
+      p.closePath();
+      if (run.type === 'lake') {
+        shore.moveTo(top[0].px, top[0].py);
+        for (const q of top) shore.lineTo(q.px, q.py);
+      }
+    };
+    for (let i = 0; i < pts.length; i++) {
+      const q = pts[i];
+      const type = w.coverAt(q.x, lane);
+      if (run && run.type === type) {
+        run.mid.push(q);
+        continue;
+      }
+      // Grenze zwischen dem vorigen und diesem Rasterpunkt: exakt am Abschnittswechsel, sonst (Baumgrenze) mittig
+      let edge = q;
+      if (run) {
+        const prev = pts[i - 1];
+        const seg = w.coverSeg(prev.x, lane);
+        edge = at(seg.b > prev.x && seg.b <= q.x ? seg.b : (prev.x + q.x) / 2);
+        edge.x = seg.b > prev.x && seg.b <= q.x ? seg.b : (prev.x + q.x) / 2;
+      }
+      close(edge);
+      run = { type, start: edge, mid: [q] };
     }
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, n * step, this.H);
+    close(pts.at(-1));
+    for (const [type, p] of Object.entries(paths)) {
+      ctx.fillStyle = COVER_COLORS[type];
+      ctx.fill(p);
+    }
+    ctx.strokeStyle = 'rgba(225,242,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke(shore);
   }
 
-  // Wolkenschatten auf dem Boden, je nach Sonnenstand neben der Wolke
-  drawCloudShadows(s, lane, sun, base) {
-    const ctx = this.ctx,
-      w = s.world;
-    const far = w.laneCount > 1 && lane === 0;
-    for (const th of w.thermals) {
-      if ((th.lane || 0) !== lane) continue;
-      const c = w.cloud(th, s.t);
-      if (!c || c.alpha <= 0.05) continue;
-      const xs = c.x + shadowShift(sun, base - w.groundAt(c.x, lane));
-      const hw = Math.max(300, 750 * c.size * (far ? 0.8 : 1)) * this.kx;
-      const cx = this.sx(xs);
-      if (cx + hw < 0 || cx - hw > this.W) continue;
-      // Kleine Wolken werfen nur einen schwachen Schatten, sonst entstehen schmale dunkle Streifen
-      const a = 0.24 * c.alpha * (1 - 0.5 * c.decay) * Math.min(1, c.size / 0.6);
-      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      g.addColorStop(0, 'rgba(15,30,25,0)');
-      g.addColorStop(0.3, `rgba(15,30,25,${a})`);
-      g.addColorStop(0.7, `rgba(15,30,25,${a})`);
-      g.addColorStop(1, 'rgba(15,30,25,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - hw, 0, hw * 2, this.H);
+  // Bäume im Wald und Häuser in Ortschaften, fest an Weltpositionen, damit nichts beim Schwenken wandert
+  drawCoverTops(w, lane) {
+    const ctx = this.ctx;
+    const sc = w.laneCount > 1 && lane === 0 ? 0.75 : 1;
+    const sp = 40;
+    const trees = new Path2D(),
+      walls = new Path2D(),
+      roofs = new Path2D();
+    const xEnd = this.left + this.W / this.kx;
+    for (let x = Math.floor(this.left / sp) * sp; x <= xEnd; x += sp) {
+      const type = w.coverAt(x, lane);
+      if (type !== 'forest' && type !== 'village') continue;
+      const j = Math.abs(Math.sin(x * 0.0123 + w.seed * 0.001 + lane) * 43758.5453) % 1;
+      const px = this.sx(x + (j - 0.5) * sp * 0.6),
+        py = this.sy(w.groundAt(x, lane)) + 1;
+      if (type === 'forest') {
+        const h = (6 + 4 * j) * sc,
+          r = (3 + 1.5 * j) * sc;
+        trees.moveTo(px + r, py - h * 0.55);
+        trees.ellipse(px, py - h * 0.55, r, h * 0.55, 0, 0, Math.PI * 2);
+      } else if (j > 0.25) {
+        const hw = (3 + 1.5 * j) * sc,
+          h = (4 + 2 * j) * sc;
+        walls.rect(px - hw, py - h, hw * 2, h);
+        roofs.moveTo(px - hw - 1, py - h);
+        roofs.lineTo(px, py - h - h * 0.8);
+        roofs.lineTo(px + hw + 1, py - h);
+        roofs.closePath();
+      }
     }
+    ctx.fillStyle = '#2a5128';
+    ctx.fill(trees);
+    ctx.fillStyle = '#efe4d0';
+    ctx.fill(walls);
+    ctx.fillStyle = '#b4553c';
+    ctx.fill(roofs);
   }
 
   drawPlumb(p, w) {
@@ -708,7 +822,7 @@ export class Renderer {
     if (o.ghostBest) maxX = Math.max(maxX, o.ghostBest + 6000);
     const x0 = -2000;
     const mx = (x) => ((x - x0) / (maxX - x0)) * W;
-    const gTop = w.terrain === 'mountain' ? 2800 : 900,
+    const gTop = w.terrain === 'mountain' ? 2800 : w.terrain === 'hills' ? 1400 : 900,
       gBot = 350;
     const my = (z) => H - 4 - ((z - gBot) / (gTop - gBot)) * (H * 0.55);
     ctx.fillStyle = 'rgba(110,160,90,0.55)';
@@ -717,6 +831,17 @@ export class Renderer {
     for (let px = 0; px <= W; px += 4) ctx.lineTo(px, my(w.ground(x0 + (px / W) * (maxX - x0))));
     ctx.lineTo(W, H);
     ctx.fill();
+    // Seen und Wälder als farbige Striche am Boden; im Gebirge die Talmitte
+    const lane = w.laneCount - 1;
+    for (let x = x0; x < maxX;) {
+      const c = w.coverSeg(x, lane);
+      if (c.type === 'lake' || c.type === 'forest') {
+        ctx.fillStyle = c.type === 'lake' ? '#6fb3e6' : '#2c5a2a';
+        const a = Math.max(c.a, x0);
+        ctx.fillRect(mx(a), my(w.groundAt((a + c.b) / 2, lane)) - 1, Math.max(1, mx(c.b) - mx(a)), 3);
+      }
+      x = c.b;
+    }
     // Wolken
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     for (const th of w.thermals) {
@@ -862,7 +987,7 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.fill();
   // Kern
   if (showCore) {
-    const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y);
+    const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y, p.l);
     if (c && Math.hypot(c.dx, c.dy) < 3 * c.r) {
       let kx = X(p.x - p.drift - c.dx),
         ky = Y(p.y - c.dy);

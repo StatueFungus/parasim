@@ -4,7 +4,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
 - **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
@@ -24,13 +24,39 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 - **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 15 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
 - **Verschmelzen**: Etwa jede fünfte Quelle erzeugt einen Zwillingsbart in 300–520 m Abstand. Nahe Bärte ziehen sich an und verschmelzen zu einem breiteren, kräftigeren Bart mit grösserer Wolke.
 
+## Gelände und Bodenarten
+
+- **Flachland**: flach um 420 m, Start mit der Winde (600 m).
+- **Hügelland**: sanfte Hügel bis etwa 800 m, Start mit der Winde (750 m) aus einer Mulde. Über Kuppen löst es etwas besser aus, die Basis liegt höher als im Flachland.
+- **Gebirge**: Hangkante und Talmitte, Start am Hang (siehe oben).
+
+Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5 km (aus der Saat bestimmt, `coverSeg` in `world.js`). Sie verändert die Stärke der Bärte, die dort auslösen:
+
+| Boden     | Thermik | Darstellung                |
+| --------- | ------- | -------------------------- |
+| Ortschaft | 115 %   | Häuser mit roten Dächern   |
+| Acker     | 110 %   | ockerfarbener Streifen     |
+| Fels      | 110 %   | nur im Gebirge über 2050 m |
+| Wiese     | 95 %    | grün                       |
+| Wald      | 60 %    | Bäume                      |
+| See       | keine   | Wasserfläche mit Uferlinie |
+
+- **Abrisskanten**: Wo der Untergrund wechselt, lösen Bärte bevorzugt aus. Liegt eine Quelle bis 400 m neben einer Grenze, wandert der Bart 40 m auf die wärmere Seite (Ortschaft, Acker und Fels vor Wiese, Wiese vor Wald, alles vor Wasser) und wird je nach Unterschied bis 18 % kräftiger.
+- **Seen**: keine Thermik; bis 900 m über dem Wasser sinkt es zusätzlich (bis 0.35 m/s direkt über dem Spiegel). Am Startplatz liegt nie ein See, an der Gebirgsflanke auch nicht.
+- **Hügelland**: Ohne Kante in der Nähe löst der Bart auf der höchsten Kuppe im Umkreis von 400 m aus. Kuppen tragen besser als Mulden.
+- **Gebirge, Hangkante**: Bärte sitzen auf Gipfeln und Graten (höchster Punkt im Umkreis von 600 m). Sie werden mit der Höhe deutlich kräftiger; in Senken zwischen den Gipfeln bleiben sie schwach (bis auf 30 %).
+- **Hangthermik an den Flanken**: Unter einem Gipfelbart zieht die erwärmte Luft die Flanken hinauf. Bis 1.5 km vom Gipfel und bis 900 m unter ihm steigt es nah am Hang (bis 300 m über Grund), dort wo das Gelände zum Gipfel ansteigt. Am stärksten direkt am Hang und nahe am Gipfel (bis gut die Hälfte des Gipfelbarts). Wer unter dem Grat ankommt, kann sich so an der Flanke hocharbeiten. Unter dem Auslösepunkt hat der Bart selbst noch keine Säule und keinen Sinkring.
+- **Hangbärte**: Unter etwa der Hälfte der Gipfelbärte löst zusätzlich ein Bart am Hang zwischen Tal und Kante aus (seitliche Position 0.85, kurz vor dem Gipfelbart, 60–80 % seiner Stärke). Mit der Höhe zieht er schräg nach hinten zur Kante und endet auf Gipfelhöhe, wo der Gipfelbart übernimmt. Wie viel davon ankommt, hängt von der seitlichen Position ab: unten trägt er von der Talmitte aus, oben nur noch an der Kante. Weil sich die Linie beim Kreisen nicht ändert, kann man mitten im Wechsel (Q) einkreisen und dem Bart so Stück für Stück nach hinten oben folgen. Er hat keine eigene Wolke.
+- **Gebirge, Talmitte**: Bärte sind nur halb so stark, und an vier von zehn Stellen entsteht gar keine Thermik.
+- **Verschmelzen**: Ein Bart, der schon aus zwei Bärten entstanden ist, verschmilzt nicht noch einmal; die Stärke beim Verschmelzen wächst höchstens bis 5.5 m/s.
+- Im Gebirge wächst an der Flanke oberhalb von 1650 m kein Wald mehr. Die Minimap zeigt Seen blau und Wälder dunkelgrün.
+
 ## Sonnenstand
 
 Die Strecke führt nach Westen, der Blick geht nach Süden. Die Sonne folgt einem Sommertag in den Alpen (47° N, Höchststand um 13:30 Uhr, `src/js/sim/sun.js`).
 
 - **Himmel und Licht**: Vormittags steht die Sonne links und es liegt Dunst über dem Horizont, der sich bis gegen 12:45 Uhr auflöst. Ab etwa 14 Uhr wird das Licht wärmer.
-- **Wolkenschatten**: Sie fallen vormittags nach Westen (in Flugrichtung vor die Wolke), mittags fast senkrecht darunter und nachmittags nach Osten.
-- **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr. Zugewandte Flanken erscheinen heller, abgewandte im Schatten.
+- **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr.
 
 ## Bärte im Wind
 
