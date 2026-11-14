@@ -119,3 +119,26 @@ test('Hangthermik: unter dem Gipfelbart steigt es nah an der Flanke, zum Gipfel 
   const flat = new World({ seed: 1 });
   for (const th of flat.thermals) assert.equal(flat.flankShare(th, th.sx + 300), 0);
 });
+
+test('Hangbärte: vom Tal erreichbar, ziehen mit der Höhe zur Kante und enden am Gipfel', () => {
+  let n = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    const w = new World({ seed, terrain: 'mountain' });
+    for (let t = 0; t <= 4200; t += 60) w.update(t);
+    for (const th of w.thermals) {
+      if (!th.hang || w.strength(th, 4200) < 1) continue;
+      n++;
+      assert.ok(th.gz < th.peakZ && th.gz > w.groundAt(th.sx, 1), 'Auslösepunkt am Hang zwischen Tal und Gipfel');
+      const low = th.gz + 0.1 * (th.peakZ - th.gz),
+        high = th.peakZ - 0.05 * (th.peakZ - th.gz);
+      assert.ok(w.laneOf(th, low) > 0.7 && w.laneOf(th, high) < 0.1, 'zieht nach hinten');
+      assert.ok(w.laneWeight(th, low, 1) > w.laneWeight(th, low, 0), 'unten von der Talmitte aus');
+      assert.ok(w.laneWeight(th, high, 0) > w.laneWeight(th, high, 1), 'oben an der Kante');
+      assert.ok(!w.cloud(th, 4200), 'eigene Wolke hat nur der Gipfelbart');
+    }
+  }
+  assert.ok(n > 5, `${n} Hangbärte`);
+  const flat = new World({ seed: 1 });
+  for (let t = 0; t <= 3600; t += 120) flat.update(t);
+  assert.ok(!flat.thermals.some((th) => th.hang));
+});

@@ -9,6 +9,7 @@ const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener a
 const FLANK_X = 1500; // Hangthermik: so weit reicht die Flanke vom Gipfelbart hinunter (waagrecht, m)
 const FLANK_Z = 900; // und so tief unter den Gipfel (m)
 const FLANK_AGL = 300; // nur in dieser Schicht über dem Hang steigt es
+const HANG_L = 0.85; // Hangbärte lösen am Hang nahe der Talmitte aus (seitliche Position 0 = Kante, 1 = Tal)
 const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
 
 // Bodenbedeckung: wie gut der Boden Thermik auslöst. Über Seen gibt es keine, dafür leichtes Sinken.
@@ -342,14 +343,47 @@ export class World {
         ),
       );
     }
+    // Hangbart: Unter einem Gipfel löst am Hang zur Talseite ein eigener Bart aus und zieht schräg zum Gipfel hinauf
+    if (this.terrain === 'mountain' && src.lane === 0) {
+      const hr = mulberry32(hash(this.seed, 'hang', src.i, Math.round(tb)));
+      if (this.prominence(src.x) > 60 && hr() < 0.6) {
+        out.push(
+          this.makeThermal(
+            sx + (hr() - 0.5) * 400,
+            1,
+            tb - 60 - 240 * hr(),
+            life * 0.85,
+            w0 * (0.6 + 0.2 * hr()),
+            rad * 0.85,
+            hash(this.seed, 'h', src.i, Math.round(tb)),
+            false,
+            { hang: true },
+          ),
+        );
+      }
+    }
     src.next = tb + life + gap;
     return out;
   }
 
   // rs: Zeitpunkt, ab dem die Thermikblase vom Boden aufsteigt
   makeThermal(sx, lane, tb, life, w0, r, seed, birds, extra = {}) {
-    const slope = (this.groundAt(sx + 150, lane) - this.groundAt(sx - 150, lane)) / 300;
-    return { id: this.nextId++, sx, gz: this.groundAt(sx, lane), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+    // Hangbärte stehen am Hang zwischen Tal und Kante; sie enden auf Höhe des Gipfels (peakZ)
+    const gl = extra.hang ? HANG_L : lane;
+    if (extra.hang) extra.peakZ = Math.max(this.ground(sx), this.groundAt(sx, gl) + 150);
+    const slope = (this.groundAt(sx + 150, gl) - this.groundAt(sx - 150, gl)) / 300;
+    return { id: this.nextId++, sx, gz: this.groundAt(sx, gl), slope, lane, tb, rs: tb, life, w0, r, seed, birds, ...extra };
+  }
+
+  // Seitliche Lage eines Barts auf Höhe z: Hangbärte ziehen mit der Höhe vom Hang zur Kante (HANG_L → 0)
+  laneOf(th, z) {
+    if (!th.hang) return th.lane || 0;
+    return HANG_L * (1 - clamp((z - th.gz) / (th.peakZ - th.gz), 0, 1));
+  }
+
+  // Wie viel von einem Bart an der seitlichen Position l ankommt
+  laneWeight(th, z, l) {
+    return 1 - Math.abs(l - this.laneOf(th, z));
   }
 
   // Sonnenstand zur Rundenzeit t, für einen Zeitschritt zwischengespeichert
@@ -403,7 +437,7 @@ export class World {
       if (a.fixed || a.merged || this.env(a, t) <= 0) continue;
       for (let j = i + 1; j < list.length; j++) {
         const b = list[j];
-        if (b.fixed || b.merged || b.lane !== a.lane || this.env(b, t) <= 0) continue;
+        if (b.fixed || b.merged || b.hang || a.hang || b.lane !== a.lane || this.env(b, t) <= 0) continue;
         const d = b.sx - a.sx,
           reach = a.r + b.r;
         if (Math.abs(d) > 0.95 * reach) continue;
@@ -543,7 +577,7 @@ export class World {
     let w = 0,
       inCore = 0;
     for (const th of this.thermals) {
-      const lw = 1 - Math.abs(l - (th.lane || 0));
+      const lw = this.laneWeight(th, z, l);
       if (lw <= 0.02) continue;
       const s = this.strength(th, t) * lw;
       if (s <= 0.01) continue;
@@ -563,6 +597,8 @@ export class World {
       const h = z - th.gz;
       let f = h < 80 ? 0.35 + (0.65 * Math.max(0, h)) / 80 : 1;
       f *= smoothstep(top + 80, top - 40, z);
+      // Der Hangbart endet am Gipfel, darüber übernimmt der Gipfelbart
+      if (th.hang) f *= smoothstep(th.peakZ + 250, th.peakZ - 50, z);
       if (bot > -Infinity) f *= smoothstep(bot - 80, bot + 40, z);
       // Unter der Wolke wird es stärker (Kondensationswärme), bei Blauthermik bremst die Inversion.
       if (this.clouds !== 'blue') f *= 1 + CLOUD_BOOST * smoothstep(base - 450, base - 40, z);
@@ -581,11 +617,12 @@ export class World {
     return agl < 900 ? 0.35 * (1 - agl / 900) : 0;
   }
 
-  nearestCore(x, z, t, lane = 0, y = 0) {
+  // l: genaue seitliche Position; Hangbärte zählen, wenn genug von ihnen dort ankommt
+  nearestCore(x, z, t, lane = 0, y = 0, l = lane) {
     let best = null,
       bq = Infinity;
     for (const th of this.thermals) {
-      if ((th.lane || 0) !== lane) continue;
+      if (th.hang ? this.laneWeight(th, z, l) < 0.3 : (th.lane || 0) !== lane) continue;
       const s = this.strength(th, t);
       if (s < 0.2) continue;
       if (z > this.topZ(th, t) + 40 || z < this.bottomZ(th, t) - 40) continue;
@@ -603,7 +640,7 @@ export class World {
   // Darstellungszustand der Wolke über einer Thermik (null = keine Wolke).
   // Die Wolke entsteht erst, wenn die Blase die Basis erreicht, und wächst dann einige Minuten.
   cloud(th, t) {
-    if (this.clouds === 'blue') return null;
+    if (this.clouds === 'blue' || th.hang) return null;
     const a = this.age(th, t);
     if (a > 1.3) return null;
     const base = this.baseMSL(t);

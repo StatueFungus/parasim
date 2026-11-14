@@ -151,7 +151,7 @@ export class Pilot {
       this.heading += ((this.steer * vms) / R_TIGHT) * dt;
       // Auch das Herausdriften relativ zum Bart läuft im Kreistempo: Man treibt mit dem Kern mit,
       // nur der Unterschied zwischen Wind und Kernversatz wirkt verlangsamt.
-      const near = world.nearestCore(this.x, this.z, t, Math.round(this.l), this.y);
+      const near = world.nearestCore(this.x, this.z, t, Math.round(this.l), this.y, this.l);
       let drift = wind;
       if (near && Math.hypot(near.dx, near.dy) < 2.5 * near.r) {
         const core = world.coreDriftRate(near.th, this.z, t, this.vz);
@@ -229,7 +229,7 @@ export class Pilot {
 
   // Automatik: zieht den Kreis bis auf autoOffset · Bartradius an den Kern.
   autoCenter(world, t, dt) {
-    const c = world.nearestCore(this.cx, this.z, t, Math.round(this.l), this.cy);
+    const c = world.nearestCore(this.cx, this.z, t, Math.round(this.l), this.cy, this.l);
     if (!c) return;
     const d = Math.hypot(c.dx, c.dy);
     const target = this.autoOffset * c.r;

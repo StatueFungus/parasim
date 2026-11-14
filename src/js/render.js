@@ -103,6 +103,7 @@ export class Renderer {
     this.drawBaseLine(base);
     this.drawGround(s, 0);
     if (o.showThermals) this.drawThermals(s, 0);
+    if (o.showThermals && w.laneCount > 1) this.drawHangThermals(s);
     if (w.laneCount > 1) {
       this.drawGround(s, 1);
       if (o.showThermals) this.drawThermals(s, 1);
@@ -194,7 +195,7 @@ export class Renderer {
     ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
     for (const th of w.thermals) {
-      if ((th.lane || 0) !== lane) continue;
+      if ((th.lane || 0) !== lane || th.hang) continue;
       const st = w.strength(th, s.t);
       if (st < 0.15) continue;
       const zTop = Math.min(w.topZ(th, s.t), base),
@@ -247,6 +248,51 @@ export class Renderer {
       ctx.fill();
       ctx.fillStyle = 'rgba(120,50,0,0.75)';
       ctx.fillText(st.toFixed(1), xTop, this.sy(zTop) + 16 + lane * 13);
+    }
+  }
+
+  // Hangbärte stehen zwischen Tal und Kante: unten vorn (gelb wie im Tal), oben hinten am Gipfel (orange wie an der Kante).
+  // Mit der Tiefe werden sie schmaler, so zieht der Bart sichtbar schräg nach hinten oben.
+  drawHangThermals(s) {
+    const ctx = this.ctx,
+      w = s.world;
+    for (const th of w.thermals) {
+      if (!th.hang) continue;
+      const st = w.strength(th, s.t);
+      if (st < 0.15) continue;
+      const zBot = Math.max(th.gz, w.bottomZ(th, s.t)),
+        zTop = Math.min(w.topZ(th, s.t), th.peakZ + 200);
+      if (zTop - zBot < 20) continue;
+      const cx0 = this.sx(w.coreX(th, zBot, s.t));
+      if (cx0 < -400 || cx0 > this.W + 400) continue;
+      const a0 = Math.min(0.42, st / 8);
+      const slices = 24,
+        dz = (zTop - zBot) / slices;
+      for (let i = 0; i < slices; i++) {
+        const z0 = zBot + i * dz,
+          zm = z0 + dz / 2;
+        const k = w.laneOf(th, zm) / 0.85; // 1 vorn am Hang, 0 hinten am Gipfel
+        const cx = this.sx(w.coreX(th, zm, s.t));
+        const hw = w.radiusAt(th, zm, s.t) * 1.6 * this.kx * (0.75 + 0.25 * k);
+        const rgb = `255,${Math.round(140 + 60 * k)},${Math.round(40 + 20 * k)}`;
+        const fade = zm > th.peakZ ? Math.max(0, 1 - (zm - th.peakZ) / 200) : 1;
+        const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+        g.addColorStop(0, `rgba(${rgb},0)`);
+        g.addColorStop(0.5, `rgba(${rgb},${a0 * fade})`);
+        g.addColorStop(1, `rgba(${rgb},0)`);
+        ctx.fillStyle = g;
+        const y1 = this.sy(z0),
+          y0 = this.sy(z0 + dz);
+        ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
+      }
+      ctx.fillStyle = 'rgba(255,200,60,0.8)';
+      ctx.beginPath();
+      ctx.arc(this.sx(th.sx), this.sy(th.gz) - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(120,50,0,0.75)';
+      ctx.font = '600 11px "Saira Semi Condensed", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(st.toFixed(1), cx0, this.sy(th.gz) - 8);
     }
   }
 
@@ -941,7 +987,7 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   ctx.fill();
   // Kern
   if (showCore) {
-    const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y);
+    const c = w.nearestCore(p.x, p.z, t, Math.round(p.l), p.y, p.l);
     if (c && Math.hypot(c.dx, c.dy) < 3 * c.r) {
       let kx = X(p.x - p.drift - c.dx),
         ky = Y(p.y - c.dy);

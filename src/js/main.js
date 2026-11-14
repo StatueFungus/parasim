@@ -497,6 +497,12 @@ function coachTip(s, p) {
     const tip = centeringTip(s, p);
     if (tip) return tip;
   }
+  // Im Hangbart: Er zieht mit der Höhe nach hinten zur Kante, man muss ihm folgen
+  if (p.circling && w.laneCount > 1) {
+    const hang = w.thermals.find((th) => th.hang && Math.abs(w.coreX(th, p.z, s.t) - p.x) < 400 && w.strength(th, s.t) > 0.5);
+    if (hang && w.laneOf(hang, p.z) < p.l - 0.25)
+      return 'Der Hangbart zieht nach hinten zum Gipfel. Ausleiten, mit Q ein Stück Richtung Kante und wieder einkreisen.';
+  }
   if (p.circling) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
