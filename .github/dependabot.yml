@@ -24,6 +24,11 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # Ab v10 braucht das Preset conventional-changelog-writer 9; semantic-release bringt noch Writer 8 mit.
+      # Erst anheben, wenn @semantic-release/release-notes-generator nachzieht.
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ['version-update:semver-major']
 
   # Basis-Images landen im ausgelieferten Container: build(deps) → Patch-Release
   - package-ecosystem: docker
