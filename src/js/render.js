@@ -3,6 +3,13 @@ import { shadowShift, slopeLight } from './sim/sun.js';
 import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
+// Farbe des Bodenstreifens je Bodenart; Wiese und Fels zeigen die Grundfarbe des Geländes
+const COVER_COLORS = {
+  field: 'rgba(214,186,96,0.85)',
+  forest: '#2f5a2d',
+  village: 'rgba(196,180,158,0.9)',
+  lake: '#4f93c4',
+};
 const TOP_PAD = 70;
 
 export class Renderer {
@@ -354,6 +361,78 @@ export class Renderer {
       pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y + 9) : ctx.moveTo(0, y + 9)));
       ctx.stroke();
     }
+    this.drawCover(w, lane, pts, step);
+    this.drawCoverTops(w, lane);
+  }
+
+  // Bodenbedeckung als Streifen unter der Oberfläche; Seen mit heller Wasserlinie
+  drawCover(w, lane, pts, step) {
+    const ctx = this.ctx;
+    const depth = w.laneCount > 1 && lane === 0 ? 8 : 12;
+    const paths = {},
+      shore = new Path2D();
+    for (let i = 0; i < pts.length - 1; i++) {
+      const type = w.coverAt(this.left + (i + 0.5) * (step / this.kx), lane);
+      if (!COVER_COLORS[type]) continue;
+      const p = (paths[type] ??= new Path2D());
+      const d = type === 'lake' ? depth * 1.5 : depth;
+      const x0 = i * step,
+        x1 = x0 + step + 0.5;
+      p.moveTo(x0, pts[i]);
+      p.lineTo(x1, pts[i + 1]);
+      p.lineTo(x1, pts[i + 1] + d);
+      p.lineTo(x0, pts[i] + d);
+      p.closePath();
+      if (type === 'lake') {
+        shore.moveTo(x0, pts[i]);
+        shore.lineTo(x1, pts[i + 1]);
+      }
+    }
+    for (const [type, p] of Object.entries(paths)) {
+      ctx.fillStyle = COVER_COLORS[type];
+      ctx.fill(p);
+    }
+    ctx.strokeStyle = 'rgba(225,242,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke(shore);
+  }
+
+  // Bäume im Wald und Häuser in Ortschaften, fest an Weltpositionen, damit nichts beim Schwenken wandert
+  drawCoverTops(w, lane) {
+    const ctx = this.ctx;
+    const sc = w.laneCount > 1 && lane === 0 ? 0.75 : 1;
+    const sp = 40;
+    const trees = new Path2D(),
+      walls = new Path2D(),
+      roofs = new Path2D();
+    const xEnd = this.left + this.W / this.kx;
+    for (let x = Math.floor(this.left / sp) * sp; x <= xEnd; x += sp) {
+      const type = w.coverAt(x, lane);
+      if (type !== 'forest' && type !== 'village') continue;
+      const j = Math.abs(Math.sin(x * 0.0123 + w.seed * 0.001 + lane) * 43758.5453) % 1;
+      const px = this.sx(x + (j - 0.5) * sp * 0.6),
+        py = this.sy(w.groundAt(x, lane)) + 1;
+      if (type === 'forest') {
+        const h = (6 + 4 * j) * sc,
+          r = (3 + 1.5 * j) * sc;
+        trees.moveTo(px + r, py - h * 0.55);
+        trees.ellipse(px, py - h * 0.55, r, h * 0.55, 0, 0, Math.PI * 2);
+      } else if (j > 0.25) {
+        const hw = (3 + 1.5 * j) * sc,
+          h = (4 + 2 * j) * sc;
+        walls.rect(px - hw, py - h, hw * 2, h);
+        roofs.moveTo(px - hw - 1, py - h);
+        roofs.lineTo(px, py - h - h * 0.8);
+        roofs.lineTo(px + hw + 1, py - h);
+        roofs.closePath();
+      }
+    }
+    ctx.fillStyle = '#2a5128';
+    ctx.fill(trees);
+    ctx.fillStyle = '#efe4d0';
+    ctx.fill(walls);
+    ctx.fillStyle = '#b4553c';
+    ctx.fill(roofs);
   }
 
   // Flanken, die zur Sonne zeigen, hell; abgewandte im Schatten. Mittags steht die Sonne im Süden, dann gleich.
@@ -708,7 +787,7 @@ export class Renderer {
     if (o.ghostBest) maxX = Math.max(maxX, o.ghostBest + 6000);
     const x0 = -2000;
     const mx = (x) => ((x - x0) / (maxX - x0)) * W;
-    const gTop = w.terrain === 'mountain' ? 2800 : 900,
+    const gTop = w.terrain === 'mountain' ? 2800 : w.terrain === 'hills' ? 1400 : 900,
       gBot = 350;
     const my = (z) => H - 4 - ((z - gBot) / (gTop - gBot)) * (H * 0.55);
     ctx.fillStyle = 'rgba(110,160,90,0.55)';
@@ -717,6 +796,15 @@ export class Renderer {
     for (let px = 0; px <= W; px += 4) ctx.lineTo(px, my(w.ground(x0 + (px / W) * (maxX - x0))));
     ctx.lineTo(W, H);
     ctx.fill();
+    // Seen und Wälder als farbige Striche am Boden; im Gebirge die Talmitte
+    const lane = w.laneCount - 1;
+    for (let px = 0; px <= W; px += 3) {
+      const x = x0 + (px / W) * (maxX - x0);
+      const type = w.coverAt(x, lane);
+      if (type !== 'lake' && type !== 'forest') continue;
+      ctx.fillStyle = type === 'lake' ? '#6fb3e6' : '#2c5a2a';
+      ctx.fillRect(px, my(w.groundAt(x, lane)) - 1, 3, 3);
+    }
     // Wolken
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     for (const th of w.thermals) {

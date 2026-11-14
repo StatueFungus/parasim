@@ -7,6 +7,7 @@ const VARIANTS = [
   { terrain: 'flat', wind: 20, clouds: 'streets' },
   { terrain: 'flat', wind: -15, clouds: 'blue' },
   { terrain: 'mountain', wind: 10, clouds: 'cumulus' },
+  { terrain: 'hills', wind: 5, clouds: 'cumulus' },
 ];
 
 test('Auftrieb ist überall eine endliche Zahl', () => {

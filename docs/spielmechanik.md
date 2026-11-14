@@ -4,7 +4,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
 - **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
@@ -23,6 +23,27 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 - **Breiter mit der Höhe**: Unten hat der Bart gut die Hälfte seines vollen Radius, ab 900 m über Grund die volle Breite. Ein reifer Bart ist etwas breiter als ein junger.
 - **Stärker unter der Wolke**: Bei Cumulus legt der Bart in den letzten 450 m unter der Basis bis zu 15 % zu (Kondensationswärme). Bei Blauthermik bremst stattdessen die Inversion.
 - **Verschmelzen**: Etwa jede fünfte Quelle erzeugt einen Zwillingsbart in 300–520 m Abstand. Nahe Bärte ziehen sich an und verschmelzen zu einem breiteren, kräftigeren Bart mit grösserer Wolke.
+
+## Gelände und Bodenarten
+
+- **Flachland**: flach um 420 m, Start mit der Winde (600 m).
+- **Hügelland**: sanfte Hügel bis etwa 800 m, Start mit der Winde (750 m) aus einer Mulde. Über Kuppen löst es etwas besser aus, die Basis liegt höher als im Flachland.
+- **Gebirge**: Hangkante und Talmitte, Start am Hang (siehe oben).
+
+Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5 km (aus der Saat bestimmt, `coverSeg` in `world.js`). Sie verändert die Stärke der Bärte, die dort auslösen:
+
+| Boden     | Thermik | Darstellung                |
+| --------- | ------- | -------------------------- |
+| Acker     | 120 %   | ockerfarbener Streifen     |
+| Ortschaft | 125 %   | Häuser mit roten Dächern   |
+| Wiese     | 100 %   | grün                       |
+| Wald      | 65 %    | Bäume                      |
+| Fels      | 115 %   | nur im Gebirge über 2050 m |
+| See       | keine   | Wasserfläche mit Uferlinie |
+
+- **Waldkanten**: Liegt eine Quelle bis 350 m neben einer Grenze zwischen Wald und offenem Land, löst der Bart 40 m auf der offenen Seite aus und ist 10 % stärker.
+- **Seen**: keine Thermik; bis 900 m über dem Wasser sinkt es zusätzlich (bis 0.35 m/s direkt über dem Spiegel). Am Startplatz liegt nie ein See, an der Gebirgsflanke auch nicht.
+- Im Gebirge wächst an der Flanke oberhalb von 1650 m kein Wald mehr. Die Minimap zeigt Seen blau und Wälder dunkelgrün.
 
 ## Sonnenstand
 

@@ -110,7 +110,7 @@ function dailyCfg() {
     key,
     world: {
       seed: hash('dseed', key),
-      terrain: r() < 0.3 ? 'mountain' : 'flat',
+      terrain: ((v) => (v < 0.3 ? 'mountain' : v < 0.55 ? 'hills' : 'flat'))(r()),
       wind: winds[Math.floor(r() * winds.length)],
       clouds: clouds[Math.floor(r() * clouds.length)],
       quality: 0.9 + 0.3 * r(),
@@ -136,7 +136,7 @@ const DAYTIMES = {
 };
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
 const CLOUD_NAMES = { cumulus: 'Cumulus', streets: 'Wolkenstrassen', blue: 'Blauthermik' };
-const TERRAIN_NAMES = { flat: 'Flachland', mountain: 'Gebirge' };
+const TERRAIN_NAMES = { flat: 'Flachland', hills: 'Hügelland', mountain: 'Gebirge' };
 
 function describe(cfg) {
   const w = cfg.world;
@@ -512,7 +512,10 @@ function coachTip(s, p) {
   if (two && p.l < 0.5 && overRidge < 180) return 'Knapp über dem Grat! Mit E ins Tal ausweichen, dort ist mehr Luft unter dir.';
   if (p.dir === -1 && game.missed && p.x < game.missed.x - 400) return 'Den Bart nicht gefunden? Mit → wieder auf Kurs gehen.';
   if (p.dir === -1 && !game.missed) return 'Du fliegst zurück. Mit → wendest du wieder auf Kurs.';
+  const ground = w.coverAt(p.x, p.l > 0.5 ? 1 : 0);
+  if (ground === 'lake' && agl < 700) return 'Über dem See steigt es nicht, die Luft ist kühl. Weiter zu Feldern oder Ortschaften.';
   if (agl < 250) return 'Sehr tief! Trimm fliegen und jedes Steigen mitnehmen.';
+  if (ground === 'forest' && agl < 500) return 'Über dem Wald löst kaum Thermik aus. Such die Waldkante oder offene Felder.';
   if (
     p.dir === 1 &&
     game.missed &&
@@ -741,7 +744,7 @@ function updateGroundPanel(s, p, cfg) {
     const strength = df < 0.55 ? 'noch schwach' : df < 0.9 ? 'im Aufbau' : 'voll entwickelt';
     H.gText.textContent =
       `${clockOf(s.t)} Uhr. Thermik ${strength}, Basis auf ${Math.round(w.baseMSL(s.t))} m. ` +
-      (w.terrain === 'flat' ? 'Du startest mit der Winde.' : 'Du startest am Hang.');
+      (w.terrain === 'mountain' ? 'Du startest am Hang.' : 'Du startest mit der Winde.');
     H.gStart.hidden = false;
     setLabel(H.gStart, 'Starten <kbd>Enter</kbd>');
   } else if (p.state === 'walking') {
