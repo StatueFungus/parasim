@@ -12,7 +12,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 ## Runde, Zeitraffer und Basis
 
 - **Rundendauer**: 4 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 8, 12 oder 15 Minuten Echtzeit. Die Thermik baut sich in der ersten halben Stunde auf und lässt in der letzten halben Stunde nach.
-- **Kreisen trotz Zeitraffer**: Je stärker die Runde rafft, desto langsamer dreht man in Flugzeit (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit immer etwa 7 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit. Steigen und Uhr laufen unverändert, man steigt also pro Kreis mehr.
+- **Kreisen trotz Zeitraffer**: Je stärker die Runde rafft, desto langsamer dreht man in Flugzeit (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit immer etwa 5.5 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit. Steigen und Uhr laufen unverändert, man steigt also pro Kreis mehr.
 - **Wolkenbasis** (bei voll entwickelter Thermik): Flachland 2400 m, Hügelland 2650 m, Gebirge 3900 m; morgens rund 800 m (Gebirge 850 m) tiefer. Blauthermik 200 m tiefer.
 - **Abgleich** (`npm run balance`): Mit EN-B schafft der beste Bot pro Tag im Mittel 75–90 km, die Bestweiten liegen um 100 km, mit CCC im Gebirge bis über 130 km. Gegenwind, Blauthermik und Schulschirme liegen deutlich darunter.
 
@@ -88,7 +88,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 - **Zentrieren**: Wird das Steigen stärker, Kurve aufmachen (Schieber zur Mitte), so fliegt man Richtung Kern. Wird es schwächer, enger eindrehen.
 - **Ausleiten**: Beim Loslassen fliegt man in die Richtung weiter, in die man gerade schaut, also auf Kurs oder zurück.
 - Die Simulation läuft für alle im gleichen Tempo (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
-- **Kreistempo**: Weil die Runde die Zeit rafft, läuft die Bewegung relativ zum Bart mit 40 % der Fluggeschwindigkeit (`CIRCLE_PACE` in `pilot.js`). Ein Kreis dauert so etwa 7 statt 2.5 Sekunden Echtzeit. Das gilt auch für das Herausdriften im Wind; Steigen, Bart und Uhr bleiben unverändert. Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo der Fluggeschwindigkeit.
+- **Kreistempo**: Weil die Runde die Zeit rafft, läuft die Bewegung relativ zum Bart mit 50 % der Fluggeschwindigkeit (`CIRCLE_PACE` in `pilot.js`). Ein Kreis dauert so etwa 5.5 statt 2.5 Sekunden Echtzeit. Das gilt auch für das Herausdriften im Wind; Steigen, Bart und Uhr bleiben unverändert. Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo der Fluggeschwindigkeit.
 - Im Test steigt ein Pilot mit dieser Technik ohne Wind etwa 1.6 statt 1.25 m/s (Automatik). Im Wind muss man gegen den Wind nachsetzen: Wer den Kern ansteuert, steigt bei 15 km/h 0.86 statt 0.57 m/s.
 - Computerpiloten nutzen die Automatik, je nach Können unterschiedlich nah am Kern.
 

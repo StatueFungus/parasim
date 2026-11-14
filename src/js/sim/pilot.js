@@ -6,9 +6,9 @@ export const TURN_TIME = 7; // Flugsekunden für eine 180°-Wende
 export const R_TIGHT = 25;
 export const STEER_START = 0.62;
 // Die Runde rafft die Zeit (Lektionen: 2 Flugstunden in 12 Minuten, Runden: 4 Flugstunden in 8 bis 15 Minuten). Damit man auf die Kreisbewegung reagieren kann,
-// läuft sie im Bart mit 40 % der Fluggeschwindigkeit (ein Kreis ≈ 7 s statt 2.5 s Echtzeit).
+// läuft sie im Bart mit 50 % der Fluggeschwindigkeit (ein Kreis ≈ 5.5 s statt 2.5 s Echtzeit).
 // Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo wieder der Fluggeschwindigkeit.
-export const CIRCLE_PACE = 0.4;
+export const CIRCLE_PACE = 0.5;
 export const circlePace = (steer) => CIRCLE_PACE + (1 - CIRCLE_PACE) * (1 - Math.min(1, Math.abs(steer) / 0.5)) ** 2;
 export const LANE_TIME = 55; // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
