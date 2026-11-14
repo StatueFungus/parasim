@@ -1,5 +1,4 @@
 import { mulberry32, noise2, smoothstep } from './sim/rng.js';
-import { slopeLight } from './sim/sun.js';
 import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
@@ -102,10 +101,10 @@ export class Renderer {
     this.drawClouds(s, base, 0);
     if (w.laneCount > 1) this.drawClouds(s, base, 1);
     this.drawBaseLine(base);
-    this.drawGround(s, 0, sun);
+    this.drawGround(s, 0);
     if (o.showThermals) this.drawThermals(s, 0);
     if (w.laneCount > 1) {
-      this.drawGround(s, 1, sun);
+      this.drawGround(s, 1);
       if (o.showThermals) this.drawThermals(s, 1);
     }
     this.drawLight();
@@ -307,7 +306,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawGround(s, lane, sun) {
+  drawGround(s, lane) {
     const ctx = this.ctx,
       w = s.world;
     const step = 3;
@@ -343,10 +342,6 @@ export class Renderer {
     }
     ctx.fillStyle = g;
     ctx.fill(path);
-    ctx.save();
-    ctx.clip(path);
-    if (w.terrain === 'mountain' && lane === 0) this.drawSlopeLight(pts, step, sun);
-    ctx.restore();
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -432,28 +427,6 @@ export class Renderer {
     ctx.fill(walls);
     ctx.fillStyle = '#b4553c';
     ctx.fill(roofs);
-  }
-
-  // Flanken, die zur Sonne zeigen, hell; abgewandte im Schatten. Mittags steht die Sonne im Süden, dann gleich.
-  // Ein weicher waagrechter Verlauf über den ganzen Hang, in einem Zug gezeichnet.
-  drawSlopeLight(pts, step, sun) {
-    const ctx = this.ctx;
-    const k = this.kx / this.ky;
-    const n = pts.length - 1;
-    const g = ctx.createLinearGradient(0, 0, n * step, 0);
-    for (let i = 0; i <= n; i += 4) {
-      const a = Math.max(0, i - 8),
-        b = Math.min(n, i + 8);
-      const slope = (-(pts[b] - pts[a]) / ((b - a) * step)) * k;
-      const l = slopeLight(sun, slope);
-      const rel = (2 * l) / (l + slopeLight(sun, -slope));
-      g.addColorStop(
-        i / n,
-        rel >= 1 ? `rgba(255,238,190,${Math.min(0.2, 1.2 * (rel - 1))})` : `rgba(30,40,60,${Math.min(0.32, 1.6 * (1 - rel))})`,
-      );
-    }
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, n * step, this.H);
   }
 
   drawPlumb(p, w) {
