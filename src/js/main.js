@@ -724,7 +724,7 @@ function updateGroundPanel(s, p, cfg) {
   const w = s.world;
   const df = w.dayFactor(s.t);
   H.gMeterFill.style.width = Math.round(df * 100) + '%';
-  H.gFast.textContent = fast ? 'Normale Zeit' : 'Zeitraffer';
+  H.gFast.innerHTML = (fast ? 'Normale Zeit' : 'Zeitraffer') + ' <kbd>X</kbd>';
   H.gFast.hidden = false;
   H.gEnd.hidden = p.flights.length === 0 && cfg.mode !== 'training';
   if (p.state === 'ready') {
