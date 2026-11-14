@@ -226,6 +226,20 @@ export class Renderer {
           y0 = this.sy(z0 + dz);
         ctx.fillRect(cx - hw, y0, hw * 2, y1 - y0 + 0.5);
       }
+      // Hangthermik: ein Band am Hang, das zum Gipfel hin kräftiger wird
+      if (w.terrain === 'mountain' && lane === 0 && w.bottomZ(th, s.t) === -Infinity) {
+        ctx.lineCap = 'butt';
+        ctx.lineWidth = Math.max(3, 160 * this.ky);
+        for (let u = th.sx - 1500; u < th.sx + 1500; u += 40) {
+          const share = w.flankShare(th, u + 20);
+          if (!share) continue;
+          ctx.strokeStyle = `rgba(${rgb},${Math.min(0.3, a0 * 1.8 * share)})`;
+          ctx.beginPath();
+          ctx.moveTo(this.sx(u), this.sy(w.ground(u) + 90));
+          ctx.lineTo(this.sx(u + 40), this.sy(w.ground(u + 40) + 90));
+          ctx.stroke();
+        }
+      }
       // Auslösepunkt am Boden
       ctx.fillStyle = `rgba(${rgb},0.8)`;
       ctx.beginPath();

@@ -509,6 +509,8 @@ function coachTip(s, p) {
   if (p.turning) return null;
   const two = w.laneCount > 1;
   const overRidge = p.z - w.ground(p.x);
+  if (two && p.l < 0.5 && overRidge < 300 && w.thermals.some((th) => w.flankLift(th, p.x, p.z, 1) > 0.15))
+    return 'Unter dem Grat steigt es an der Flanke: nah am Hang kreisen und dich zum Gipfel hocharbeiten.';
   if (two && p.l < 0.5 && overRidge < 180) return 'Knapp über dem Grat! Mit E ins Tal ausweichen, dort ist mehr Luft unter dir.';
   if (p.dir === -1 && game.missed && p.x < game.missed.x - 400) return 'Den Bart nicht gefunden? Mit → wieder auf Kurs gehen.';
   if (p.dir === -1 && !game.missed) return 'Du fliegst zurück. Mit → wendest du wieder auf Kurs.';

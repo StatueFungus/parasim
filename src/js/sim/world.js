@@ -6,6 +6,9 @@ export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
 const GROW = 2; // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
 const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
+const FLANK_X = 1500; // Hangthermik: so weit reicht die Flanke vom Gipfelbart hinunter (waagrecht, m)
+const FLANK_Z = 900; // und so tief unter den Gipfel (m)
+const FLANK_AGL = 300; // nur in dieser Schicht über dem Hang steigt es
 const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
 
 // Bodenbedeckung: wie gut der Boden Thermik auslöst. Über Seen gibt es keine, dafür leichtes Sinken.
@@ -180,6 +183,28 @@ export class World {
       best = { b, x: dw >= 0 ? b + inward * 40 : b - inward * 40, boost: 1 + 0.06 * Math.min(3, Math.abs(dw)) };
     }
     return best;
+  }
+
+  // Hangthermik: Unter einem Gipfelbart zieht die erwärmte Luft die Flanken hinauf und sammelt sich am Gipfel.
+  // Nah am Hang steigt es deshalb schon unterhalb des Grats, umso stärker, je näher man dem Gipfel kommt.
+  // Liefert den Anteil 0..1 an der Stärke des Barts, ohne Rücksicht auf die Höhe über Grund.
+  flankShare(th, x) {
+    if (this.terrain !== 'mountain' || th.lane) return 0;
+    const d = th.sx - x;
+    if (Math.abs(d) > FLANK_X) return 0;
+    const g = this.ground(x);
+    const drop = th.gz - g;
+    if (drop < 15 || drop > FLANK_Z) return 0;
+    // Nur wo das Gelände zum Gipfel hin ansteigt
+    if (this.ground(x + Math.sign(d) * 60) <= g) return 0;
+    return 0.55 * (1 - drop / FLANK_Z) * (1 - Math.abs(d) / FLANK_X);
+  }
+
+  flankLift(th, x, z, s) {
+    const share = this.flankShare(th, x);
+    if (!share) return 0;
+    const agl = z - this.ground(x);
+    return agl < 0 || agl > FLANK_AGL ? 0 : s * share * (1 - agl / FLANK_AGL);
   }
 
   // Höchster Punkt im Umkreis von d Metern: Gipfel und Grate lösen Bärte aus
@@ -524,6 +549,11 @@ export class World {
       if (s <= 0.01) continue;
       const top = this.topZ(th, t),
         bot = this.bottomZ(th, t);
+      // Unter dem Auslösepunkt gibt es noch keine Säule (auch keinen Sinkring), am Gipfel aber die Hangthermik
+      if (z < th.gz - 30) {
+        if (bot === -Infinity) w += this.flankLift(th, x, z, s);
+        continue;
+      }
       if (z > top + 80 || z < bot - 80) continue;
       const dx = x - this.coreX(th, z, t);
       const q = (y ? Math.hypot(dx, y) : Math.abs(dx)) / this.radiusAt(th, z, t);

@@ -45,6 +45,7 @@ Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5
 - **Seen**: keine Thermik; bis 900 m über dem Wasser sinkt es zusätzlich (bis 0.35 m/s direkt über dem Spiegel). Am Startplatz liegt nie ein See, an der Gebirgsflanke auch nicht.
 - **Hügelland**: Ohne Kante in der Nähe löst der Bart auf der höchsten Kuppe im Umkreis von 400 m aus. Kuppen tragen besser als Mulden.
 - **Gebirge, Hangkante**: Bärte sitzen auf Gipfeln und Graten (höchster Punkt im Umkreis von 600 m). Sie werden mit der Höhe deutlich kräftiger; in Senken zwischen den Gipfeln bleiben sie schwach (bis auf 30 %).
+- **Hangthermik an den Flanken**: Unter einem Gipfelbart zieht die erwärmte Luft die Flanken hinauf. Bis 1.5 km vom Gipfel und bis 900 m unter ihm steigt es nah am Hang (bis 300 m über Grund), dort wo das Gelände zum Gipfel ansteigt. Am stärksten direkt am Hang und nahe am Gipfel (bis gut die Hälfte des Gipfelbarts). Wer unter dem Grat ankommt, kann sich so an der Flanke hocharbeiten. Unter dem Auslösepunkt hat der Bart selbst noch keine Säule und keinen Sinkring.
 - **Gebirge, Talmitte**: Bärte sind nur halb so stark, und an vier von zehn Stellen entsteht gar keine Thermik.
 - **Verschmelzen**: Ein Bart, der schon aus zwei Bärten entstanden ist, verschmilzt nicht noch einmal; die Stärke beim Verschmelzen wächst höchstens bis 5.5 m/s.
 - Im Gebirge wächst an der Flanke oberhalb von 1650 m kein Wald mehr. Die Minimap zeigt Seen blau und Wälder dunkelgrün.

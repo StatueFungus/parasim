@@ -91,3 +91,31 @@ test('Im Gebirge: Bärte auf Gipfeln und Graten kräftiger als in Senken, die Ta
   assert.ok(mean(peak) > 1.5 * mean(low), `Gipfel ${mean(peak).toFixed(2)} gegen Senke ${mean(low).toFixed(2)}`);
   assert.ok(valleyNone / valley > 0.25, 'in der Talmitte bleibt oft ganz ohne Thermik');
 });
+
+test('Hangthermik: unter dem Gipfelbart steigt es nah an der Flanke, zum Gipfel hin stärker', () => {
+  let flanks = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    const w = new World({ seed, terrain: 'mountain' });
+    for (let t = 0; t <= 3600; t += 60) w.update(t);
+    for (const th of w.thermals) {
+      if (th.lane || w.strength(th, 3600) < 1.5 || w.bottomZ(th, 3600) > -Infinity) continue;
+      for (const dir of [-1, 1]) {
+        const near = th.sx + dir * 250,
+          far = th.sx + dir * 900;
+        const sn = w.flankShare(th, near),
+          sf = w.flankShare(th, far);
+        if (!sn) continue;
+        flanks++;
+        const g = w.ground(near);
+        assert.ok(w.flankLift(th, near, g + 50, 2) > w.flankLift(th, near, g + 250, 2), 'nah am Hang am stärksten');
+        assert.equal(w.flankLift(th, near, g + 350, 2), 0, 'über 300 m nicht mehr');
+        if (sf) assert.ok(sn > sf, 'näher am Gipfel kräftiger');
+      }
+    }
+    // Talmitte und Flachland haben keine Hangthermik
+    for (const th of w.thermals) if (th.lane) assert.equal(w.flankShare(th, th.sx + 300), 0);
+  }
+  assert.ok(flanks > 10, `${flanks} Flanken`);
+  const flat = new World({ seed: 1 });
+  for (const th of flat.thermals) assert.equal(flat.flankShare(th, th.sx + 300), 0);
+});
