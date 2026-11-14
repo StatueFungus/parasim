@@ -17,6 +17,7 @@ src/
         ├── rng.js      Deterministischer Zufall und Rauschen
         ├── gliders.js  Polaren EN-A bis CCC, MacCready-Sollfahrt, Kurvensinken
         ├── world.js    Gelände, Linien, Thermik-Lebenszyklus, Wind, Wolken, Abwind
+        ├── sun.js      Sonnenstand, Schattenwurf, Licht auf Flanken
         ├── pilot.js    Flugphysik, Kreisen mit Kurvenschieber, Bot-Taktik
         └── session.js  Runde: Uhr, Piloten, Bots, Neustarts
 ```

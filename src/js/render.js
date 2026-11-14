@@ -1,4 +1,5 @@
-import { mulberry32, noise2, clamp } from './sim/rng.js';
+import { mulberry32, noise2, smoothstep } from './sim/rng.js';
+import { shadowShift, slopeLight } from './sim/sun.js';
 import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
@@ -83,18 +84,24 @@ export class Renderer {
     const w = s.world;
     this.lanes = w.laneCount;
     const base = w.baseMSL(s.t);
+    const sun = w.sun(s.t);
+    // Morgens Dunst und kühles Licht, gegen Abend wärmer
+    this.haze = 1 - smoothstep(11.4, 12.8, sun.hour);
+    this.warm = smoothstep(13.8, 15.3, sun.hour);
 
-    this.drawSky(s);
+    this.drawSky(sun);
     this.drawFar(w);
+    this.drawHaze(w);
     this.drawClouds(s, base, 0);
     if (w.laneCount > 1) this.drawClouds(s, base, 1);
     this.drawBaseLine(base);
-    this.drawGround(w, 0);
+    this.drawGround(s, 0, sun, base);
     if (o.showThermals) this.drawThermals(s, 0);
     if (w.laneCount > 1) {
-      this.drawGround(w, 1);
+      this.drawGround(s, 1, sun, base);
       if (o.showThermals) this.drawThermals(s, 1);
     }
+    this.drawLight();
     this.drawMarks(s, o);
     this.drawBirds(s);
     if (o.focus?.state === 'flying') this.drawPlumb(o.focus, w);
@@ -105,24 +112,44 @@ export class Renderer {
     this.drawMini(s, o);
   }
 
-  drawSky(s) {
-    const ctx = this.ctx;
-    const late = clamp((s.t - 5400) / 3600, 0, 1);
+  drawSky(sun) {
+    const ctx = this.ctx,
+      { haze, warm } = this;
     const g = ctx.createLinearGradient(0, 0, 0, this.H);
-    g.addColorStop(0, mix('#1f5d9e', '#2a5288', late));
-    g.addColorStop(0.55, mix('#6fa6d6', '#86a6cf', late));
-    g.addColorStop(1, mix('#d9ecf6', '#f1dcc0', late));
+    g.addColorStop(0, mix(mix('#1f5d9e', '#2d649c', haze), '#2a5288', warm));
+    g.addColorStop(0.55, mix(mix('#6fa6d6', '#93b9d9', haze), '#8aa7cc', warm));
+    g.addColorStop(1, mix(mix('#d9ecf6', '#eaf0f2', haze), '#f5d6a6', warm));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, this.W, this.H);
-    // Sonne wandert langsam nach rechts unten
-    const sunX = this.W * (0.18 + 0.5 * clamp(s.t / 9000, 0, 1));
-    const sunY = this.H * 0.12 + 40 * late;
-    const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 120);
+    // Die Sonne steht im Süden vor uns: morgens links (Osten), nachmittags rechts (Westen), mittags am höchsten
+    const sunX = this.W * (0.5 + 0.6 * sun.x);
+    const sunY = this.H * (0.04 + (63 - (sun.elev * 180) / Math.PI) / 90);
+    const rad = 120 + 50 * warm;
+    const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, rad);
     sg.addColorStop(0, 'rgba(255,250,225,0.95)');
-    sg.addColorStop(0.12, 'rgba(255,244,200,0.75)');
+    sg.addColorStop(0.12, mix('#fff4c8', '#ffdc96', warm, 0.75));
     sg.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = sg;
-    ctx.fillRect(sunX - 120, sunY - 120, 240, 240);
+    ctx.fillRect(sunX - rad, sunY - rad, rad * 2, rad * 2);
+  }
+
+  // Morgendunst über dem Horizont, löst sich bis gegen 12:45 Uhr auf
+  drawHaze(w) {
+    if (this.haze < 0.01) return;
+    const ctx = this.ctx;
+    const y = this.sy(w.ground(this.cam.x));
+    const g = ctx.createLinearGradient(0, y, 0, y - this.H * 0.4);
+    g.addColorStop(0, `rgba(234,240,245,${0.5 * this.haze})`);
+    g.addColorStop(1, 'rgba(234,240,245,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y - this.H * 0.4, this.W, this.H * 0.4 + 40);
+  }
+
+  // Warmes Licht am Nachmittag über der ganzen Landschaft
+  drawLight() {
+    if (this.warm < 0.01) return;
+    this.ctx.fillStyle = `rgba(255,150,60,${0.07 * this.warm})`;
+    this.ctx.fillRect(0, 0, this.W, this.H);
   }
 
   drawFar(w) {
@@ -273,20 +300,21 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawGround(w, lane) {
-    const ctx = this.ctx;
+  drawGround(s, lane, sun, base) {
+    const ctx = this.ctx,
+      w = s.world;
     const step = 3;
     const two = w.laneCount > 1;
-    ctx.beginPath();
-    ctx.moveTo(0, this.H);
+    const path = new Path2D();
+    path.moveTo(0, this.H);
     const pts = [];
     for (let px = 0; px <= this.W + step; px += step) {
       const y = this.sy(w.groundAt(this.left + px / this.kx, lane));
       pts.push(y);
-      ctx.lineTo(px, y);
+      path.lineTo(px, y);
     }
-    ctx.lineTo(this.W, this.H);
-    ctx.closePath();
+    path.lineTo(this.W, this.H);
+    path.closePath();
     let g;
     if (w.terrain === 'mountain' && lane === 0) {
       // sonnige Flanke
@@ -307,7 +335,12 @@ export class Renderer {
       g.addColorStop(1, '#466e33');
     }
     ctx.fillStyle = g;
-    ctx.fill();
+    ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    if (w.terrain === 'mountain' && lane === 0) this.drawSlopeLight(pts, step, sun);
+    this.drawCloudShadows(s, lane, sun, base);
+    ctx.restore();
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -320,6 +353,53 @@ export class Renderer {
       ctx.beginPath();
       pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y + 9) : ctx.moveTo(0, y + 9)));
       ctx.stroke();
+    }
+  }
+
+  // Flanken, die zur Sonne zeigen, hell; abgewandte im Schatten. Mittags steht die Sonne im Süden, dann gleich.
+  // Ein weicher waagrechter Verlauf über den ganzen Hang, in einem Zug gezeichnet.
+  drawSlopeLight(pts, step, sun) {
+    const ctx = this.ctx;
+    const k = this.kx / this.ky;
+    const n = pts.length - 1;
+    const g = ctx.createLinearGradient(0, 0, n * step, 0);
+    for (let i = 0; i <= n; i += 4) {
+      const a = Math.max(0, i - 8),
+        b = Math.min(n, i + 8);
+      const slope = (-(pts[b] - pts[a]) / ((b - a) * step)) * k;
+      const l = slopeLight(sun, slope);
+      const rel = (2 * l) / (l + slopeLight(sun, -slope));
+      g.addColorStop(
+        i / n,
+        rel >= 1 ? `rgba(255,238,190,${Math.min(0.2, 1.2 * (rel - 1))})` : `rgba(30,40,60,${Math.min(0.32, 1.6 * (1 - rel))})`,
+      );
+    }
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, n * step, this.H);
+  }
+
+  // Wolkenschatten auf dem Boden, je nach Sonnenstand neben der Wolke
+  drawCloudShadows(s, lane, sun, base) {
+    const ctx = this.ctx,
+      w = s.world;
+    const far = w.laneCount > 1 && lane === 0;
+    for (const th of w.thermals) {
+      if ((th.lane || 0) !== lane) continue;
+      const c = w.cloud(th, s.t);
+      if (!c || c.alpha <= 0.05) continue;
+      const xs = c.x + shadowShift(sun, base - w.groundAt(c.x, lane));
+      const hw = Math.max(300, 750 * c.size * (far ? 0.8 : 1)) * this.kx;
+      const cx = this.sx(xs);
+      if (cx + hw < 0 || cx - hw > this.W) continue;
+      // Kleine Wolken werfen nur einen schwachen Schatten, sonst entstehen schmale dunkle Streifen
+      const a = 0.24 * c.alpha * (1 - 0.5 * c.decay) * Math.min(1, c.size / 0.6);
+      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+      g.addColorStop(0, 'rgba(15,30,25,0)');
+      g.addColorStop(0.3, `rgba(15,30,25,${a})`);
+      g.addColorStop(0.7, `rgba(15,30,25,${a})`);
+      g.addColorStop(1, 'rgba(15,30,25,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - hw, 0, hw * 2, this.H);
     }
   }
 
@@ -922,9 +1002,11 @@ function hexA(hex, a) {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-function mix(a, b, t) {
+// Mischt zwei Hex-Farben; ohne Deckkraft wieder als Hex (verschachtelbar), sonst als rgba
+function mix(a, b, t, alpha) {
   const pa = parseInt(a.slice(1), 16),
     pb = parseInt(b.slice(1), 16);
   const c = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
-  return `rgb(${c(16)},${c(8)},${c(0)})`;
+  if (alpha != null) return `rgba(${c(16)},${c(8)},${c(0)},${alpha})`;
+  return '#' + ((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, '0');
 }
