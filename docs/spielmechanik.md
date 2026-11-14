@@ -51,7 +51,7 @@ Einstellung «Wetterlage» im Training und Wettkampf; die Tagesaufgabe hat an je
 
 - **Normal**: ein guter Thermiktag.
 - **Überentwicklung**: Etwa jeder vierte kräftige Bart (über 2.4 m/s), der nach 12:30 Uhr reift, türmt sich zum Schauer auf und lebt 50 % länger. Unter dem Regen fällt kalte Luft (bis 2.8 m/s Sinken bis zum Boden), der Bart selbst trägt kaum noch. Bärte in der Umgebung werden schwächer (bis −80 % direkt daneben, Reichweite etwa 2 km). Nicht bei Blauthermik.
-- **Abschirmung**: Bänder aus Schleierwolken ziehen mit dem Höhenwind (6 m/s plus halber Bodenwind) durch und decken etwa ein Drittel der Strecke ab. Darunter ist die Thermik bis 40 % schwächer, die Cumulus verblassen, der Boden liegt im Halbschatten.
+- **Abschirmung**: Bänder aus Schleierwolken ziehen mit dem Höhenwind (6 m/s plus halber Bodenwind) durch und decken etwa ein Drittel der Strecke ab. Darunter ist die Thermik bis 40 % schwächer, die Cumulus verblassen.
 - **Inversion**: Die Basis liegt 400 m tiefer. Die Wolken laufen flach und breit aus, darunter staut sich Dunst.
 
 Unabhängig von der Wetterlage gilt im Gebirge und Hügelland bei Wind:
@@ -65,7 +65,6 @@ Der Fluglehrer warnt vor Schauern in Flugrichtung, unter dem Regen, im Lee und e
 Die Strecke führt nach Westen, der Blick geht nach Süden. Die Sonne folgt einem Sommertag in den Alpen (47° N, Höchststand um 13:30 Uhr, `src/js/sim/sun.js`).
 
 - **Himmel und Licht**: Vormittags steht die Sonne links und es liegt Dunst über dem Horizont, der sich bis gegen 12:45 Uhr auflöst. Ab etwa 14 Uhr wird das Licht wärmer.
-- **Wolkenschatten**: Sie fallen vormittags nach Westen (in Flugrichtung vor die Wolke), mittags fast senkrecht darunter und nachmittags nach Osten.
 - **Sonnige Flanke**: Im Gebirge trägt an der Hangkante die Flanke besser, die gerade zur Sonne zeigt: vormittags die Ostflanken (Gelände steigt in Flugrichtung an), nachmittags die Westflanken. Der Effekt liegt bei bis zu ±20 % und verschwindet um 13:30 Uhr. Zugewandte Flanken erscheinen heller, abgewandte im Schatten.
 
 ## Bärte im Wind

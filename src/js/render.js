@@ -1,5 +1,5 @@
 import { mulberry32, noise2, smoothstep } from './sim/rng.js';
-import { shadowShift, slopeLight } from './sim/sun.js';
+import { slopeLight } from './sim/sun.js';
 import { TURN_TIME, R_TIGHT, STEER_START } from './sim/pilot.js';
 
 const ZOOMS = [3200, 6000, 11000];
@@ -103,10 +103,10 @@ export class Renderer {
     this.drawClouds(s, base, 0);
     if (w.laneCount > 1) this.drawClouds(s, base, 1);
     this.drawBaseLine(base);
-    this.drawGround(s, 0, sun, base);
+    this.drawGround(s, 0, sun);
     if (o.showThermals) this.drawThermals(s, 0);
     if (w.laneCount > 1) {
-      this.drawGround(s, 1, sun, base);
+      this.drawGround(s, 1, sun);
       if (o.showThermals) this.drawThermals(s, 1);
     }
     this.drawLight();
@@ -360,20 +360,6 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  // Unter Schleierwolken liegt der Boden im Halbschatten
-  drawCirrusShade(s) {
-    const w = s.world;
-    if (w.weather !== 'cirrus') return;
-    const g = this.ctx.createLinearGradient(0, 0, this.W, 0);
-    const n = 16;
-    for (let i = 0; i <= n; i++) {
-      const a = w.shade(this.left + ((i / n) * this.W) / this.kx, s.t);
-      g.addColorStop(i / n, `rgba(20,30,45,${0.2 * a})`);
-    }
-    this.ctx.fillStyle = g;
-    this.ctx.fillRect(0, 0, this.W, this.H);
-  }
-
   drawBaseLine(base) {
     const ctx = this.ctx,
       y = this.sy(base);
@@ -387,7 +373,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawGround(s, lane, sun, base) {
+  drawGround(s, lane, sun) {
     const ctx = this.ctx,
       w = s.world;
     const step = 3;
@@ -426,8 +412,6 @@ export class Renderer {
     ctx.save();
     ctx.clip(path);
     if (w.terrain === 'mountain' && lane === 0) this.drawSlopeLight(pts, step, sun);
-    this.drawCloudShadows(s, lane, sun, base);
-    this.drawCirrusShade(s);
     ctx.restore();
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
@@ -536,31 +520,6 @@ export class Renderer {
     }
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, n * step, this.H);
-  }
-
-  // Wolkenschatten auf dem Boden, je nach Sonnenstand neben der Wolke
-  drawCloudShadows(s, lane, sun, base) {
-    const ctx = this.ctx,
-      w = s.world;
-    const far = w.laneCount > 1 && lane === 0;
-    for (const th of w.thermals) {
-      if ((th.lane || 0) !== lane) continue;
-      const c = w.cloud(th, s.t);
-      if (!c || c.alpha <= 0.05) continue;
-      const xs = c.x + shadowShift(sun, base - w.groundAt(c.x, lane));
-      const hw = Math.max(300, 750 * c.size * (far ? 0.8 : 1)) * this.kx;
-      const cx = this.sx(xs);
-      if (cx + hw < 0 || cx - hw > this.W) continue;
-      // Kleine Wolken werfen nur einen schwachen Schatten, sonst entstehen schmale dunkle Streifen
-      const a = 0.24 * c.alpha * (1 - 0.5 * c.decay) * Math.min(1, c.size / 0.6);
-      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      g.addColorStop(0, 'rgba(15,30,25,0)');
-      g.addColorStop(0.3, `rgba(15,30,25,${a})`);
-      g.addColorStop(0.7, `rgba(15,30,25,${a})`);
-      g.addColorStop(1, 'rgba(15,30,25,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(cx - hw, 0, hw * 2, this.H);
-    }
   }
 
   drawPlumb(p, w) {
