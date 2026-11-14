@@ -49,17 +49,45 @@ test('Über Seen entsteht keine Thermik, der Wasserspiegel ist eben und tief sin
   assert.ok(lakes > 5, 'es gibt Seen');
 });
 
-test('Waldkanten ziehen Bärte auf die offene Seite', () => {
+test('Bärte lösen an Kanten zwischen Untergründen aus, auf der wärmeren Seite', () => {
+  const warmth = { village: 3, field: 2.5, rock: 2.5, meadow: 1.5, forest: 0.6, lake: 0 };
   let edges = 0;
   for (let seed = 1; seed <= 20; seed++) {
-    const w = new World({ seed, terrain: 'hills' });
+    const w = new World({ seed, terrain: 'flat' });
     for (const src of w.sources) {
       if (!src.edge) continue;
       edges++;
-      assert.notEqual(src.cover, 'forest');
-      const near = [src.x - 60, src.x + 60].map((x) => w.coverAt(x, src.lane));
-      assert.ok(near.includes('forest'), 'Wald gleich daneben');
+      const here = w.coverAt(src.x, src.lane);
+      const near = [src.x - 80, src.x + 80].map((x) => w.coverAt(x, src.lane));
+      const other = near.find((t) => t !== here);
+      assert.ok(other, 'eine Kante gleich daneben');
+      assert.ok(warmth[here] >= warmth[other], `${here} ist wärmer als ${other}`);
     }
   }
-  assert.ok(edges > 10);
+  assert.ok(edges > 30);
+});
+
+test('Im Gebirge: Bärte auf Gipfeln und Graten kräftiger als in Senken, die Talmitte trägt kaum', () => {
+  const peak = [],
+    low = [];
+  let valley = 0,
+    valleyNone = 0;
+  for (let seed = 1; seed <= 12; seed++) {
+    const w = new World({ seed, terrain: 'mountain' });
+    for (const src of w.sources) {
+      if (src.x < 2000) continue;
+      if (src.lane === 1) {
+        valley++;
+        if (src.next === Infinity) valleyNone++;
+        continue;
+      }
+      // Der Bart sitzt auf dem höchsten Punkt seiner Umgebung
+      assert.ok(w.ground(src.x) >= w.ground(src.x + 50) - 1e-6 || w.ground(src.x) >= w.ground(src.x - 50) - 1e-6);
+      (w.prominence(src.x) > 150 ? peak : w.prominence(src.x) < -50 ? low : []).push(src.q);
+    }
+  }
+  const mean = (a) => a.reduce((n, v) => n + v, 0) / a.length;
+  assert.ok(peak.length > 10 && low.length > 5);
+  assert.ok(mean(peak) > 1.5 * mean(low), `Gipfel ${mean(peak).toFixed(2)} gegen Senke ${mean(low).toFixed(2)}`);
+  assert.ok(valleyNone / valley > 0.25, 'in der Talmitte bleibt oft ganz ohne Thermik');
 });

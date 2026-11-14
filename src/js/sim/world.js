@@ -9,7 +9,7 @@ const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener a
 const CLOUD_BOOST = 0.15; // Verstärkung kurz unter der Wolke
 
 // Bodenbedeckung: wie gut der Boden Thermik auslöst. Über Seen gibt es keine, dafür leichtes Sinken.
-export const COVER_LIFT = { field: 1.2, meadow: 1, forest: 0.65, village: 1.25, lake: 0, rock: 1.15 };
+export const COVER_LIFT = { field: 1.1, meadow: 0.95, forest: 0.6, village: 1.15, lake: 0, rock: 1.1 };
 const COVER_MIX = {
   flat: [
     ['field', 4],
@@ -37,7 +37,8 @@ const COVER_MIX = {
     ['lake', 0.6],
   ],
 };
-const OPEN = new Set(['field', 'meadow', 'village']);
+// Wie stark sich der Boden in der Sonne erwärmt; an Kanten zwischen warm und kühl lösen Bärte ab
+const WARMTH = { village: 3, field: 2.5, rock: 2.5, meadow: 1.5, forest: 0.6, lake: 0 };
 
 export class World {
   constructor(o = {}) {
@@ -162,20 +163,43 @@ export class World {
     return g > 2050 ? 'rock' : type === 'forest' && g > 1650 ? 'meadow' : type;
   }
 
-  // Grenze zwischen Wald und offenem Land innerhalb von d Metern: Dort lösen Bärte bevorzugt aus,
-  // 40 m auf der offenen Seite. Liefert die neue Position oder null.
-  forestEdge(x, lane, d) {
+  // Abrisskante: Wechsel des Untergrunds innerhalb von d Metern. Der Bart löst 40 m auf der wärmeren Seite aus,
+  // umso kräftiger, je grösser der Unterschied ist. Liefert { x, boost } oder null.
+  coverEdge(x, lane, d) {
     const c = this.coverSeg(x, lane);
+    let best = null;
     for (const [b, inward] of [
       [c.a, 1],
       [c.b, -1],
     ]) {
       if (Math.abs(b - x) > d) continue;
       const other = this.coverSeg(b - inward, lane);
-      if (c.type === 'forest' && OPEN.has(other.type)) return b - inward * 40;
-      if (other.type === 'forest' && OPEN.has(c.type)) return b + inward * 40;
+      if (other.type === c.type) continue;
+      const dw = WARMTH[c.type] - WARMTH[other.type];
+      if (best && Math.abs(best.b - x) < Math.abs(b - x)) continue;
+      best = { b, x: dw >= 0 ? b + inward * 40 : b - inward * 40, boost: 1 + 0.06 * Math.min(3, Math.abs(dw)) };
     }
-    return null;
+    return best;
+  }
+
+  // Höchster Punkt im Umkreis von d Metern: Gipfel und Grate lösen Bärte aus
+  peakNear(x, d) {
+    let bx = x,
+      bz = this.ground(x);
+    for (let u = x - d; u <= x + d; u += 50) {
+      const z = this.ground(u);
+      if (z > bz) {
+        bz = z;
+        bx = u;
+      }
+    }
+    return bx;
+  }
+
+  // Höhe gegenüber der Umgebung: positiv auf Gipfeln und Graten, negativ in Senken zwischen den Bergen
+  prominence(x) {
+    const g = (u) => this.ground(u);
+    return g(x) - (g(x - 2500) + g(x - 1200) + g(x + 1200) + g(x + 2500)) / 4;
   }
 
   mtnBase(x) {
@@ -211,18 +235,32 @@ export class World {
   makeSource(i, x, lane = 0) {
     const r = mulberry32(lane ? hash(this.seed, 's' + lane, i) : hash(this.seed, 's', i));
     let q = 0.75 + 0.5 * r();
-    if (this.terrain === 'mountain') {
-      q *= lane ? 0.7 : 1.05 * (0.85 + 0.75 * clamp((this.ground(x) - 650) / 1500, 0, 1));
-    } else if (this.terrain === 'hills') q *= 0.9 + 0.35 * clamp((this.ground(x) - 470) / 400, 0, 1);
-    q *= 1 + 0.25 * this.street(x);
-    const edge = this.forestEdge(x, lane, 350);
-    if (edge != null) {
-      x = edge;
-      q *= 1.1;
+    let edge = null,
+      none = false;
+    if (this.terrain === 'mountain' && !lane) {
+      // Flanke: Bärte an Gipfeln und Graten, umso kräftiger, je höher; in Senken zwischen den Gipfeln schwach
+      x = this.peakNear(x, 600);
+      q *= (0.65 + 0.95 * clamp((this.ground(x) - 900) / 1500, 0, 1)) * clamp(1 + this.prominence(x) / 500, 0.3, 1.3);
+    } else {
+      edge = this.coverEdge(x, lane, 400);
+      if (edge) {
+        x = edge.x;
+        q *= edge.boost;
+      } else if (this.terrain === 'hills') x = this.peakNear(x, 400);
+      if (this.terrain === 'hills') {
+        q *= (0.9 + 0.35 * clamp((this.ground(x) - 470) / 400, 0, 1)) * clamp(1 + this.prominence(x) / 300, 0.6, 1.3);
+      }
+      // Talmitte: wenig und schwache Thermik, oft gar keine
+      if (this.terrain === 'mountain') {
+        q *= 0.5;
+        none = r() < 0.4;
+      }
     }
+    q *= 1 + 0.25 * this.street(x);
     const cover = this.coverAt(x, lane);
-    q *= COVER_LIFT[cover];
-    return { i, x, q, lane, cover, edge: edge != null, rng: r, next: cover === 'lake' ? Infinity : -r() * 1800 - 60 };
+    // Obergrenze, damit sich Höhe, Kante und Boden nicht zu Monsterbärten aufschaukeln
+    q = Math.min(1.9, q * COVER_LIFT[cover]);
+    return { i, x, q, lane, cover, edge: !!edge, rng: r, next: cover === 'lake' || none ? Infinity : -r() * 1800 - 60 };
   }
 
   spacing(i, x, lane = 0) {
@@ -331,14 +369,16 @@ export class World {
   }
 
   // Nahe Bärte ziehen sich an und verschmelzen zu einem grossen, kräftigeren Bart.
+  // Ein schon verschmolzener Bart verschmilzt nicht noch einmal, sonst wächst er an einem Gipfel,
+  // an dem immer wieder neue Bärte auslösen, ohne Grenze.
   mergeThermals(t, dt) {
     const list = this.thermals;
     for (let i = 0; i < list.length; i++) {
       const a = list[i];
-      if (a.fixed || this.env(a, t) <= 0) continue;
+      if (a.fixed || a.merged || this.env(a, t) <= 0) continue;
       for (let j = i + 1; j < list.length; j++) {
         const b = list[j];
-        if (b.fixed || b.lane !== a.lane || this.env(b, t) <= 0) continue;
+        if (b.fixed || b.merged || b.lane !== a.lane || this.env(b, t) <= 0) continue;
         const d = b.sx - a.sx,
           reach = a.r + b.r;
         if (Math.abs(d) > 0.95 * reach) continue;
@@ -358,7 +398,7 @@ export class World {
           a.lane,
           t - 0.3 * life,
           life,
-          Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0),
+          Math.max(Math.min(5.5, Math.max(a.w0, b.w0) * 1.05 + 0.08 * Math.min(a.w0, b.w0)), a.w0, b.w0),
           Math.hypot(a.r, b.r) * 0.95,
           hash(this.seed, 'm', a.seed, b.seed),
           a.birds || b.birds,

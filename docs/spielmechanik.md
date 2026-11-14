@@ -34,15 +34,19 @@ Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5
 
 | Boden     | Thermik | Darstellung                |
 | --------- | ------- | -------------------------- |
-| Acker     | 120 %   | ockerfarbener Streifen     |
-| Ortschaft | 125 %   | Häuser mit roten Dächern   |
-| Wiese     | 100 %   | grün                       |
-| Wald      | 65 %    | Bäume                      |
-| Fels      | 115 %   | nur im Gebirge über 2050 m |
+| Ortschaft | 115 %   | Häuser mit roten Dächern   |
+| Acker     | 110 %   | ockerfarbener Streifen     |
+| Fels      | 110 %   | nur im Gebirge über 2050 m |
+| Wiese     | 95 %    | grün                       |
+| Wald      | 60 %    | Bäume                      |
 | See       | keine   | Wasserfläche mit Uferlinie |
 
-- **Waldkanten**: Liegt eine Quelle bis 350 m neben einer Grenze zwischen Wald und offenem Land, löst der Bart 40 m auf der offenen Seite aus und ist 10 % stärker.
+- **Abrisskanten**: Wo der Untergrund wechselt, lösen Bärte bevorzugt aus. Liegt eine Quelle bis 400 m neben einer Grenze, wandert der Bart 40 m auf die wärmere Seite (Ortschaft, Acker und Fels vor Wiese, Wiese vor Wald, alles vor Wasser) und wird je nach Unterschied bis 18 % kräftiger.
 - **Seen**: keine Thermik; bis 900 m über dem Wasser sinkt es zusätzlich (bis 0.35 m/s direkt über dem Spiegel). Am Startplatz liegt nie ein See, an der Gebirgsflanke auch nicht.
+- **Hügelland**: Ohne Kante in der Nähe löst der Bart auf der höchsten Kuppe im Umkreis von 400 m aus. Kuppen tragen besser als Mulden.
+- **Gebirge, Hangkante**: Bärte sitzen auf Gipfeln und Graten (höchster Punkt im Umkreis von 600 m). Sie werden mit der Höhe deutlich kräftiger; in Senken zwischen den Gipfeln bleiben sie schwach (bis auf 30 %).
+- **Gebirge, Talmitte**: Bärte sind nur halb so stark, und an vier von zehn Stellen entsteht gar keine Thermik.
+- **Verschmelzen**: Ein Bart, der schon aus zwei Bärten entstanden ist, verschmilzt nicht noch einmal; die Stärke beim Verschmelzen wächst höchstens bis 5.5 m/s.
 - Im Gebirge wächst an der Flanke oberhalb von 1650 m kein Wald mehr. Die Minimap zeigt Seen blau und Wälder dunkelgrün.
 
 ## Sonnenstand

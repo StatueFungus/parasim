@@ -306,20 +306,29 @@ export class Renderer {
     ctx.restore();
   }
 
+  // Gelände und Bodenarten werden auf einem festen Raster in Weltkoordinaten abgetastet (etwa alle 3 px).
+  // So bleiben Kanten und Grenzen beim Schwenken der Kamera ruhig, statt von Spalte zu Spalte zu springen.
+  groundGrid(w, lane) {
+    const g = 3 / this.kx;
+    const k0 = Math.floor(this.left / g) - 1,
+      k1 = Math.ceil((this.left + this.W / this.kx) / g) + 1;
+    const pts = [];
+    for (let k = k0; k <= k1; k++) {
+      const x = k * g;
+      pts.push({ x, px: this.sx(x), py: this.sy(w.groundAt(x, lane)) });
+    }
+    return pts;
+  }
+
   drawGround(s, lane) {
     const ctx = this.ctx,
       w = s.world;
-    const step = 3;
     const two = w.laneCount > 1;
+    const pts = this.groundGrid(w, lane);
     const path = new Path2D();
-    path.moveTo(0, this.H);
-    const pts = [];
-    for (let px = 0; px <= this.W + step; px += step) {
-      const y = this.sy(w.groundAt(this.left + px / this.kx, lane));
-      pts.push(y);
-      path.lineTo(px, y);
-    }
-    path.lineTo(this.W, this.H);
+    path.moveTo(pts[0].px, this.H);
+    for (const p of pts) path.lineTo(p.px, p.py);
+    path.lineTo(pts.at(-1).px, this.H);
     path.closePath();
     let g;
     if (w.terrain === 'mountain' && lane === 0) {
@@ -345,43 +354,62 @@ export class Renderer {
     ctx.strokeStyle = two && lane === 0 ? 'rgba(255,240,200,0.55)' : 'rgba(30,50,25,0.55)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y) : ctx.moveTo(0, y)));
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)));
     ctx.stroke();
     if (two && lane === 1) {
       // Fluss im Talboden
       ctx.strokeStyle = 'rgba(140,195,235,0.6)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      pts.forEach((y, i) => (i ? ctx.lineTo(i * step, y + 9) : ctx.moveTo(0, y + 9)));
+      pts.forEach((p, i) => (i ? ctx.lineTo(p.px, p.py + 9) : ctx.moveTo(p.px, p.py + 9)));
       ctx.stroke();
     }
-    this.drawCover(w, lane, pts, step);
+    this.drawCover(w, lane, pts);
     this.drawCoverTops(w, lane);
   }
 
-  // Bodenbedeckung als Streifen unter der Oberfläche; Seen mit heller Wasserlinie
-  drawCover(w, lane, pts, step) {
+  // Bodenbedeckung als Streifen unter der Oberfläche; Seen mit heller Wasserlinie.
+  // Läufe gleicher Bodenart enden genau an der Abschnittsgrenze aus der Welt, nicht an einem Rasterpunkt.
+  drawCover(w, lane, pts) {
     const ctx = this.ctx;
     const depth = w.laneCount > 1 && lane === 0 ? 8 : 12;
     const paths = {},
       shore = new Path2D();
-    for (let i = 0; i < pts.length - 1; i++) {
-      const type = w.coverAt(this.left + (i + 0.5) * (step / this.kx), lane);
-      if (!COVER_COLORS[type]) continue;
-      const p = (paths[type] ??= new Path2D());
-      const d = type === 'lake' ? depth * 1.5 : depth;
-      const x0 = i * step,
-        x1 = x0 + step + 0.5;
-      p.moveTo(x0, pts[i]);
-      p.lineTo(x1, pts[i + 1]);
-      p.lineTo(x1, pts[i + 1] + d);
-      p.lineTo(x0, pts[i] + d);
+    const at = (x) => ({ px: this.sx(x), py: this.sy(w.groundAt(x, lane)) });
+    let run = null;
+    const close = (end) => {
+      if (!run || !COVER_COLORS[run.type]) return;
+      const top = [run.start, ...run.mid, end];
+      const d = run.type === 'lake' ? depth * 1.5 : depth;
+      const p = (paths[run.type] ??= new Path2D());
+      p.moveTo(top[0].px, top[0].py);
+      for (const q of top) p.lineTo(q.px, q.py);
+      for (let i = top.length - 1; i >= 0; i--) p.lineTo(top[i].px, top[i].py + d);
       p.closePath();
-      if (type === 'lake') {
-        shore.moveTo(x0, pts[i]);
-        shore.lineTo(x1, pts[i + 1]);
+      if (run.type === 'lake') {
+        shore.moveTo(top[0].px, top[0].py);
+        for (const q of top) shore.lineTo(q.px, q.py);
       }
+    };
+    for (let i = 0; i < pts.length; i++) {
+      const q = pts[i];
+      const type = w.coverAt(q.x, lane);
+      if (run && run.type === type) {
+        run.mid.push(q);
+        continue;
+      }
+      // Grenze zwischen dem vorigen und diesem Rasterpunkt: exakt am Abschnittswechsel, sonst (Baumgrenze) mittig
+      let edge = q;
+      if (run) {
+        const prev = pts[i - 1];
+        const seg = w.coverSeg(prev.x, lane);
+        edge = at(seg.b > prev.x && seg.b <= q.x ? seg.b : (prev.x + q.x) / 2);
+        edge.x = seg.b > prev.x && seg.b <= q.x ? seg.b : (prev.x + q.x) / 2;
+      }
+      close(edge);
+      run = { type, start: edge, mid: [q] };
     }
+    close(pts.at(-1));
     for (const [type, p] of Object.entries(paths)) {
       ctx.fillStyle = COVER_COLORS[type];
       ctx.fill(p);
@@ -745,12 +773,14 @@ export class Renderer {
     ctx.fill();
     // Seen und Wälder als farbige Striche am Boden; im Gebirge die Talmitte
     const lane = w.laneCount - 1;
-    for (let px = 0; px <= W; px += 3) {
-      const x = x0 + (px / W) * (maxX - x0);
-      const type = w.coverAt(x, lane);
-      if (type !== 'lake' && type !== 'forest') continue;
-      ctx.fillStyle = type === 'lake' ? '#6fb3e6' : '#2c5a2a';
-      ctx.fillRect(px, my(w.groundAt(x, lane)) - 1, 3, 3);
+    for (let x = x0; x < maxX;) {
+      const c = w.coverSeg(x, lane);
+      if (c.type === 'lake' || c.type === 'forest') {
+        ctx.fillStyle = c.type === 'lake' ? '#6fb3e6' : '#2c5a2a';
+        const a = Math.max(c.a, x0);
+        ctx.fillRect(mx(a), my(w.groundAt((a + c.b) / 2, lane)) - 1, Math.max(1, mx(c.b) - mx(a)), 3);
+      }
+      x = c.b;
     }
     // Wolken
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
