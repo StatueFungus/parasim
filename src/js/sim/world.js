@@ -250,7 +250,7 @@ export class World {
 
   baseMSL(t) {
     const df = this.dayFactor(t);
-    let b = this.terrain === 'mountain' ? 2250 + 850 * df : this.terrain === 'hills' ? 1350 + 1000 * df : 1120 + 950 * df;
+    let b = this.terrain === 'mountain' ? 2700 + 1200 * df : this.terrain === 'hills' ? 1500 + 1150 * df : 1300 + 1100 * df;
     if (this.clouds === 'blue') b -= 200;
     return b;
   }
@@ -316,7 +316,7 @@ export class World {
   // Eine Quelle erzeugt eine Thermik, manchmal einen Zwilling daneben, der später mit ihr verschmelzen kann.
   spawn(src, tb) {
     const r = src.rng;
-    const w0 = (1.9 + 1.7 * Math.pow(r(), 1.4)) * src.q * this.quality;
+    const w0 = (2.1 + 1.8 * Math.pow(r(), 1.4)) * src.q * this.quality;
     const life = (18 + 20 * r()) * 60;
     const rad = 100 + 120 * r() + 25 * w0;
     const gap = (1.5 + 7 * r()) * 60;

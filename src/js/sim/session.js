@@ -13,6 +13,9 @@ export const BOT_ROSTER = [
   { name: 'Sami', mc: 1.2, skill: 0.6, color: '#7fd1c7', tag: 'Fortgeschritten' },
 ];
 
+// Zeitraffer, auf den Kreistempo und Zentrierhilfe abgestimmt sind; stärker raffende Runden bremsen das Kreisen
+export const REF_RATE = 10;
+
 export class Session {
   constructor(cfg) {
     this.cfg = cfg;
@@ -28,6 +31,7 @@ export class Session {
   }
 
   add(p) {
+    p.paceScale = Math.min(1, REF_RATE / this.rate);
     p.launchX = p.x = this.world.launchX;
     p.z = this.world.launchGround;
     this.pilots.push(p);

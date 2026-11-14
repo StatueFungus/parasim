@@ -25,7 +25,7 @@ src/
 ## Grundsätze
 
 - **Determinismus**: Eine Saat ergibt immer denselben Tag. Thermikquellen haben eigene Zufallsgeneratoren, damit die Reihenfolge der Erzeugung keine Rolle spielt. Das ist die Grundlage für Tagesaufgabe, Rekordflug-Geist und späteres gemeinsames Fliegen.
-- **Feste Spielzeit**: Die Simulation läuft für alle im gleichen Tempo (Standard: 2 Flugstunden in 12 Minuten). Langsamere Kreisbewegung im Bart ist Teil der Physik (`CIRCLE_PACE`), keine Zeitlupe.
+- **Feste Spielzeit**: Die Simulation läuft für alle im gleichen Tempo (Standard: 4 Flugstunden in 12 Minuten). Langsamere Kreisbewegung im Bart ist Teil der Physik (`CIRCLE_PACE`, mit dem Zeitraffer skaliert über `paceScale`), keine Zeitlupe.
 - **Sim ohne DOM**: `src/js/sim/` importiert nichts aus dem Browser. Tests und `npm run balance` laufen direkt in Node.
 
 ## Auslieferung

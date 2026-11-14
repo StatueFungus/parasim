@@ -31,6 +31,8 @@ const prefs = Object.assign(
   },
   load('prefs', {}),
 );
+// Ältere Spielstände kannten 6 und 20 Minuten
+if (![8, 12, 15].includes(prefs.len)) prefs.len = 12;
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
@@ -124,7 +126,7 @@ function dailyCfg() {
 
 const STEER_RATE = 1.2; // Schieberweg pro echter Sekunde bei gehaltener Pfeiltaste
 const STEER_PX = 110; // Daumenweg in Pixeln für eine Schiebereinheit
-// Startzeit im Training: Die Runde dauert immer 2 Flugstunden, der Tag endet entsprechend später.
+// Startzeit im Training: Die Runde dauert immer 4 Flugstunden, der Tag endet entsprechend später.
 const DAYTIMES = {
   morning: { t: 0, name: 'Vormittag', desc: 'Start 11:30 Uhr. Die Thermik baut sich erst auf, etwa 30 Minuten warten lohnt sich.' },
   noon: { t: 1800, name: 'Mittag', desc: 'Start 12:00 Uhr. Die Thermik ist voll entwickelt, du kannst sofort los.' },
@@ -151,12 +153,18 @@ function pbKey(cfg) {
 }
 
 // ---------- Spielstart ----------
+// Eine Runde dauert 4 Flugstunden; in 8 bis 15 Minuten Echtzeit (Lektionen haben eigene Längen)
+const ROUND = 14400;
+
 function startGame(cfg) {
+  const duration = cfg.duration ?? ROUND;
+  // Der Thermiktag klingt erst zum Rundenende ab
+  if (!cfg.lesson) cfg.world.dayLen ??= (cfg.tStart ?? 0) + duration;
   const session = new Session({
     world: cfg.world,
-    duration: cfg.duration ?? 7200,
+    duration,
     tStart: cfg.tStart ?? 0,
-    rate: cfg.rate ?? (cfg.duration ?? 7200) / ((cfg.len ?? 12) * 60),
+    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 12) * 60),
     penalty: cfg.penalty ?? 0,
   });
   cfg.centering ??= prefs.centering;
@@ -477,7 +485,7 @@ function circleAvg(p, t) {
   if (!p.circling || h.length < 2) return null;
   const a = h[0],
     span = t - a.t;
-  return span > 6 ? (p.z - a.z) / span : null;
+  return span > simSpan(p, 6) ? (p.z - a.z) / span : null;
 }
 
 function coachTip(s, p) {
@@ -507,8 +515,8 @@ function coachTip(s, p) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
     if (p.z > base - 120) return 'Basis erreicht. Raus aus dem Bart und auf Strecke gehen.';
-    if (avg != null && inT > 35 && avg < 0) return 'Du sinkst beim Kreisen. Geradeaus weiterfliegen und neue Thermik suchen.';
-    if (avg != null && inT > 60 && agl > 700 && avg < p.mc * 0.6)
+    if (avg != null && inT > simSpan(p, 35) && avg < 0) return 'Du sinkst beim Kreisen. Geradeaus weiterfliegen und neue Thermik suchen.';
+    if (avg != null && inT > simSpan(p, 60) && agl > 700 && avg < p.mc * 0.6)
       return `Nur ${avg.toFixed(1)} m/s, weniger als dein MC ${p.mc.toFixed(1)}. Weiterfliegen kann sich lohnen.`;
     return null;
   }
@@ -547,14 +555,16 @@ function coachTip(s, p) {
   return null;
 }
 
-// Tipps fürs selbst Zentrieren: Schwankt das Steigen über die letzten 25 Flugsekunden stark, liegt der Kern daneben.
+// Tipps fürs selbst Zentrieren: Schwankt das Steigen über etwa einen Drittelkreis stark, liegt der Kern daneben.
+// Fenster in Flugsekunden wachsen mit dem Zeitraffer, damit sie in Echtzeit gleich lang bleiben.
+const simSpan = (p, sec) => sec / p.paceScale;
 function centeringTip(s, p) {
   const pts = game.assistPts;
-  if (!pts.length || s.t - pts[0].t < 25) return null;
+  if (!pts.length || s.t - pts[0].t < simSpan(p, 25)) return null;
   if (Math.abs(p.steer) < 0.15) return 'Du fliegst fast geradeaus. Mit dem Schieber wieder eindrehen, sonst verlässt du den Bart.';
   let lo = Infinity,
     hi = -Infinity;
-  for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < 25; i--) {
+  for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < simSpan(p, 25); i--) {
     lo = Math.min(lo, pts[i].v);
     hi = Math.max(hi, pts[i].v);
   }
@@ -820,7 +830,7 @@ function tickGame(dt) {
     // Steigwerte im aktuellen Kreis für Ø-Anzeige (letzte 30 Flugsekunden)
     if (p.circling) {
       game.circleHist.push({ t: s.t, z: p.z });
-      while (game.circleHist.length > 2 && s.t - game.circleHist[0].t > 30) game.circleHist.shift();
+      while (game.circleHist.length > 2 && s.t - game.circleHist[0].t > simSpan(p, 30)) game.circleHist.shift();
     } else game.circleHist.length = 0;
     // Spur für den Thermik-Assistenten im mitfliegenden Bezugssystem
     if (p.circling && !game.wasCircling) game.assistPts.length = 0;
@@ -1092,14 +1102,13 @@ $('setupGo').onclick = () => {
       wind: prefs.wind,
       clouds: prefs.clouds,
       quality: prefs.quality,
-      dayLen: tStart + 7200,
     },
     daytime,
     tStart,
     glider: prefs.glider,
     bots: prefs.bots,
     len: prefs.len,
-    penalty: setupMode === 'race' ? 1200 : 0,
+    penalty: setupMode === 'race' ? 1800 : 0,
   });
 };
 

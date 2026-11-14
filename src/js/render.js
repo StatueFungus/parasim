@@ -923,7 +923,7 @@ export function drawAssist(cv, p, w, t, pts, showCore) {
   let mx = 0,
     my = 0,
     n = 0;
-  for (let i = pts.length - 1; i >= 0 && t - pts[i].t < 25; i--) {
+  for (let i = pts.length - 1; i >= 0 && t - pts[i].t < 25 / p.paceScale; i--) {
     mx += pts[i].x;
     my += pts[i].y;
     n++;
