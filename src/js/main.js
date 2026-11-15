@@ -34,6 +34,8 @@ const prefs = Object.assign(
 // Echtzeit pro Runde; früher unter «len» mit anderen Stufen gespeichert, das wird bewusst nicht übernommen
 delete prefs.len;
 if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 12;
+// Gegenwind höchstens 20 km/h; ältere Einstellungen mit 25 km/h werden begrenzt
+prefs.wind = Math.max(-20, Math.min(25, prefs.wind));
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
