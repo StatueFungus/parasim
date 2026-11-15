@@ -5,10 +5,10 @@ export const TURN_TIME = 7; // Flugsekunden für eine 180°-Wende
 // Radius = R_TIGHT / |steer|; zu Beginn eine moderate Kurve von etwa 40 m.
 export const R_TIGHT = 25;
 export const STEER_START = 0.62;
-// Die Runde rafft die Zeit (2 Flugstunden in 12 Minuten). Damit man auf die Kreisbewegung reagieren kann,
-// läuft sie im Bart mit 40 % der Fluggeschwindigkeit (ein Kreis ≈ 7 s statt 2.5 s Echtzeit).
+// Die Runde rafft die Zeit (Lektionen: 2 Flugstunden in 12 Minuten, Runden: 2 Flugstunden in 10 bis 15 Minuten). Damit man auf die Kreisbewegung reagieren kann,
+// läuft sie im Bart mit 50 % der Fluggeschwindigkeit (ein Kreis ≈ 5.5 s statt 2.5 s Echtzeit).
 // Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo wieder der Fluggeschwindigkeit.
-export const CIRCLE_PACE = 0.4;
+export const CIRCLE_PACE = 0.5;
 export const circlePace = (steer) => CIRCLE_PACE + (1 - CIRCLE_PACE) * (1 - Math.min(1, Math.abs(steer) / 0.5)) ** 2;
 export const LANE_TIME = 55; // Flugsekunden für den Wechsel Hangkante ↔ Talmitte
 export const LANE_NAMES = ['Hangkante', 'Talmitte'];
@@ -45,6 +45,9 @@ export class Pilot {
     // centering: 'auto' | 'assist' | 'pro'; autoOffset: bis auf welchen Bruchteil des Bartradius die Automatik zentriert.
     this.centering = o.centering || 'auto';
     this.autoOffset = o.autoOffset ?? 0.5;
+    // Kreistempo relativ zum Zeitraffer: Rafft die Runde stärker, dreht man in Flugzeit langsamer,
+    // damit ein Kreis in Echtzeit gleich lang dauert (setzt die Session)
+    this.paceScale = 1;
     this.heading = 0;
     this.steer = STEER_START;
     this.lastSteerSign = 1;
@@ -145,7 +148,7 @@ export class Pilot {
     if (this.circling) {
       // Drehrate aus dem Schieber; enge Kurven kosten mehr Sinken, geradeaus fliegt man mit Trimm.
       const a = Math.abs(this.steer);
-      const pace = circlePace(this.steer);
+      const pace = circlePace(this.steer) * this.paceScale;
       const vms = (this.v / 3.6) * pace;
       this.R = a > 0.02 ? R_TIGHT / a : Infinity;
       this.heading += ((this.steer * vms) / R_TIGHT) * dt;
@@ -234,7 +237,7 @@ export class Pilot {
     const d = Math.hypot(c.dx, c.dy);
     const target = this.autoOffset * c.r;
     if (d <= target || d > 1.7 * c.r + this.R) return;
-    const m = Math.min(d - target, 3.2 * this.glider.center * dt);
+    const m = Math.min(d - target, 3.2 * this.glider.center * this.paceScale * dt);
     const mx = -(c.dx / d) * m,
       my = -(c.dy / d) * m;
     this.x += mx;

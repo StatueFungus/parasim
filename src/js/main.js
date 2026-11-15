@@ -1,7 +1,7 @@
 import { Session } from './sim/session.js';
 import { Pilot, LANE_NAMES } from './sim/pilot.js';
 import { GLIDERS, circleSink, bestBar } from './sim/gliders.js';
-import { DAY_START } from './sim/world.js';
+import { DAY_START, PLAYABLE_TERRAINS } from './sim/world.js';
 import { hash, mulberry32 } from './sim/rng.js';
 import { Renderer, drawBarogram, drawAssist } from './render.js';
 import { VarioSound } from './audio.js';
@@ -21,7 +21,7 @@ const prefs = Object.assign(
     wind: 0,
     quality: 1,
     bots: 3,
-    len: 12,
+    minutes: 12,
     sound: true,
     coach: true,
     thermals: false,
@@ -31,6 +31,12 @@ const prefs = Object.assign(
   },
   load('prefs', {}),
 );
+// Echtzeit pro Runde; früher unter «len» mit anderen Stufen gespeichert, das wird bewusst nicht übernommen
+delete prefs.len;
+if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 12;
+// Gegenwind höchstens 20 km/h; ältere Einstellungen mit 25 km/h werden begrenzt
+prefs.wind = Math.max(-20, Math.min(25, prefs.wind));
+if (!PLAYABLE_TERRAINS.includes(prefs.terrain)) prefs.terrain = 'flat';
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
@@ -110,7 +116,7 @@ function dailyCfg() {
     key,
     world: {
       seed: hash('dseed', key),
-      terrain: ((v) => (v < 0.3 ? 'mountain' : v < 0.55 ? 'hills' : 'flat'))(r()),
+      terrain: r() < 0.4 ? 'hills' : 'flat',
       wind: winds[Math.floor(r() * winds.length)],
       clouds: clouds[Math.floor(r() * clouds.length)],
       quality: 0.9 + 0.3 * r(),
@@ -131,7 +137,7 @@ const DAYTIMES = {
   afternoon: {
     t: 5400,
     name: 'Nachmittag',
-    desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis, im Gebirge schiebt Talwind. Gegen Ende lässt sie nach.',
+    desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis. Gegen Ende lässt sie nach.',
   },
 };
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
@@ -151,12 +157,18 @@ function pbKey(cfg) {
 }
 
 // ---------- Spielstart ----------
+// Eine Runde dauert 2 Flugstunden; in 10 bis 15 Minuten Echtzeit, Standard 12 (Lektionen haben eigene Längen)
+const ROUND = 7200;
+
 function startGame(cfg) {
+  const duration = cfg.duration ?? ROUND;
+  // Der Thermiktag klingt erst zum Rundenende ab
+  if (!cfg.lesson) cfg.world.dayLen ??= (cfg.tStart ?? 0) + duration;
   const session = new Session({
     world: cfg.world,
-    duration: cfg.duration ?? 7200,
+    duration,
     tStart: cfg.tStart ?? 0,
-    rate: cfg.rate ?? (cfg.duration ?? 7200) / ((cfg.len ?? 12) * 60),
+    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 12) * 60),
     penalty: cfg.penalty ?? 0,
   });
   cfg.centering ??= prefs.centering;
@@ -477,7 +489,7 @@ function circleAvg(p, t) {
   if (!p.circling || h.length < 2) return null;
   const a = h[0],
     span = t - a.t;
-  return span > 6 ? (p.z - a.z) / span : null;
+  return span > simSpan(p, 6) ? (p.z - a.z) / span : null;
 }
 
 function coachTip(s, p) {
@@ -507,8 +519,8 @@ function coachTip(s, p) {
     const avg = circleAvg(p, s.t);
     const inT = p.flight.circStart ? s.t - p.flight.circStart.t : 0;
     if (p.z > base - 120) return 'Basis erreicht. Raus aus dem Bart und auf Strecke gehen.';
-    if (avg != null && inT > 35 && avg < 0) return 'Du sinkst beim Kreisen. Geradeaus weiterfliegen und neue Thermik suchen.';
-    if (avg != null && inT > 60 && agl > 700 && avg < p.mc * 0.6)
+    if (avg != null && inT > simSpan(p, 35) && avg < 0) return 'Du sinkst beim Kreisen. Geradeaus weiterfliegen und neue Thermik suchen.';
+    if (avg != null && inT > simSpan(p, 60) && agl > 700 && avg < p.mc * 0.6)
       return `Nur ${avg.toFixed(1)} m/s, weniger als dein MC ${p.mc.toFixed(1)}. Weiterfliegen kann sich lohnen.`;
     return null;
   }
@@ -547,14 +559,16 @@ function coachTip(s, p) {
   return null;
 }
 
-// Tipps fürs selbst Zentrieren: Schwankt das Steigen über die letzten 25 Flugsekunden stark, liegt der Kern daneben.
+// Tipps fürs selbst Zentrieren: Schwankt das Steigen über etwa einen Drittelkreis stark, liegt der Kern daneben.
+// Fenster in Flugsekunden wachsen mit dem Zeitraffer, damit sie in Echtzeit gleich lang bleiben.
+const simSpan = (p, sec) => sec / p.paceScale;
 function centeringTip(s, p) {
   const pts = game.assistPts;
-  if (!pts.length || s.t - pts[0].t < 25) return null;
+  if (!pts.length || s.t - pts[0].t < simSpan(p, 25)) return null;
   if (Math.abs(p.steer) < 0.15) return 'Du fliegst fast geradeaus. Mit dem Schieber wieder eindrehen, sonst verlässt du den Bart.';
   let lo = Infinity,
     hi = -Infinity;
-  for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < 25; i--) {
+  for (let i = pts.length - 1; i >= 0 && s.t - pts[i].t < simSpan(p, 25); i--) {
     lo = Math.min(lo, pts[i].v);
     hi = Math.max(hi, pts[i].v);
   }
@@ -820,7 +834,7 @@ function tickGame(dt) {
     // Steigwerte im aktuellen Kreis für Ø-Anzeige (letzte 30 Flugsekunden)
     if (p.circling) {
       game.circleHist.push({ t: s.t, z: p.z });
-      while (game.circleHist.length > 2 && s.t - game.circleHist[0].t > 30) game.circleHist.shift();
+      while (game.circleHist.length > 2 && s.t - game.circleHist[0].t > simSpan(p, 30)) game.circleHist.shift();
     } else game.circleHist.length = 0;
     // Spur für den Thermik-Assistenten im mitfliegenden Bezugssystem
     if (p.circling && !game.wasCircling) game.assistPts.length = 0;
@@ -857,7 +871,12 @@ function tickDemo(dt) {
 
 function makeDemo() {
   const s = new Session({
-    world: { seed: (Math.random() * 1e9) | 0, terrain: Math.random() < 0.5 ? 'flat' : 'mountain', wind: 5, clouds: 'cumulus' },
+    world: {
+      seed: (Math.random() * 1e9) | 0,
+      terrain: PLAYABLE_TERRAINS[Math.floor(Math.random() * PLAYABLE_TERRAINS.length)],
+      wind: 5,
+      clouds: 'cumulus',
+    },
     duration: 5400,
     tStart: 1500,
     rate: 14,
@@ -1037,7 +1056,7 @@ segInit('sGlider', 'glider');
 segInit('sTerrain', 'terrain');
 segInit('sClouds', 'clouds');
 segInit('sQuality', 'quality', Number);
-segInit('sLen', 'len', Number);
+segInit('sLen', 'minutes', Number);
 segInit('sCenter', 'centering');
 segInit('sDaytime', 'daytime');
 const daytimeLabel = () => {
@@ -1092,13 +1111,12 @@ $('setupGo').onclick = () => {
       wind: prefs.wind,
       clouds: prefs.clouds,
       quality: prefs.quality,
-      dayLen: tStart + 7200,
     },
     daytime,
     tStart,
     glider: prefs.glider,
     bots: prefs.bots,
-    len: prefs.len,
+    len: prefs.minutes,
     penalty: setupMode === 'race' ? 1200 : 0,
   });
 };

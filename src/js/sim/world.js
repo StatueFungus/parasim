@@ -4,6 +4,8 @@ import { sunAt, slopeLight } from './sun.js';
 // Simulationszeit in Sekunden ab Rundenbeginn; Rundenbeginn ist 11:30 Uhr.
 export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
+// Spielbares Gelände; das Gebirge ist vorerst ausgeblendet, bleibt aber in der Simulation erhalten
+export const PLAYABLE_TERRAINS = ['flat', 'hills'];
 const GROW = 2; // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
 const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
 const FLANK_X = 1500; // Hangthermik: so weit reicht die Flanke vom Gipfelbart hinunter (waagrecht, m)
@@ -250,7 +252,7 @@ export class World {
 
   baseMSL(t) {
     const df = this.dayFactor(t);
-    let b = this.terrain === 'mountain' ? 2250 + 850 * df : this.terrain === 'hills' ? 1350 + 1000 * df : 1120 + 950 * df;
+    let b = this.terrain === 'mountain' ? 2450 + 950 * df : this.terrain === 'hills' ? 1350 + 1000 * df : 1120 + 950 * df;
     if (this.clouds === 'blue') b -= 200;
     return b;
   }
@@ -266,7 +268,7 @@ export class World {
     if (this.terrain === 'mountain' && !lane) {
       // Flanke: Bärte an Gipfeln und Graten, umso kräftiger, je höher; in Senken zwischen den Gipfeln schwach
       x = this.peakNear(x, 600);
-      q *= (0.65 + 0.95 * clamp((this.ground(x) - 900) / 1500, 0, 1)) * clamp(1 + this.prominence(x) / 500, 0.3, 1.3);
+      q *= (0.8 + 0.95 * clamp((this.ground(x) - 900) / 1500, 0, 1)) * clamp(1 + this.prominence(x) / 500, 0.3, 1.3);
     } else {
       edge = this.coverEdge(x, lane, 400);
       if (edge) {
@@ -294,7 +296,7 @@ export class World {
     let s = 800 + 1700 * r();
     s *= 1 - 0.35 * this.street(x);
     if (this.clouds === 'blue') s *= 1.15;
-    if (this.terrain === 'mountain') s *= lane ? 1.9 : 0.85;
+    if (this.terrain === 'mountain') s *= lane ? 1.9 : 0.7;
     return s;
   }
 

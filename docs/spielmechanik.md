@@ -4,10 +4,17 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Hügelland (das Gebirge ist vorerst ausgeblendet, siehe unten), Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
-- **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
+- **Lernpfad**: 8 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Bärte im Wind, Prüfungsflug). Die Lektion «Linienwahl im Gebirge» ist mit dem Gebirge ausgeblendet.
+
+## Runde, Zeitraffer und Basis
+
+- **Rundendauer**: 2 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 10, 12 oder 15 Minuten Echtzeit (Standard 12, also 10-facher Zeitraffer). Die Thermik baut sich in der ersten halben Stunde auf und lässt gegen Ende nach.
+- **Kreisen trotz Zeitraffer**: Rafft die Runde stärker als 10-fach (10 min), dreht man in Flugzeit langsamer (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit höchstens etwa 5.5 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit.
+- **Wolkenbasis** (bei voll entwickelter Thermik): Flachland 2070 m, Hügelland 2350 m, Gebirge 3400 m; morgens deutlich tiefer. Blauthermik 200 m tiefer.
+- **Abgleich** (`npm run balance`): Mit EN-B schafft der beste Bot pro Tag im Mittel 30–37 km, die Bestweiten liegen bei 40–55 km. Gute Piloten kommen an starken Tagen auf rund 60 km.
 
 ## Wenden und Linienwahl
 
@@ -28,7 +35,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 - **Flachland**: flach um 420 m, Start mit der Winde (600 m).
 - **Hügelland**: sanfte Hügel bis etwa 800 m, Start mit der Winde (750 m) aus einer Mulde. Über Kuppen löst es etwas besser aus, die Basis liegt höher als im Flachland.
-- **Gebirge**: Hangkante und Talmitte, Start am Hang (siehe oben).
+- **Gebirge** (vorerst ausgeblendet): Hangkante und Talmitte, Start am Hang (siehe oben). Die Simulation ist vollständig erhalten; freigeschaltet wird es über `PLAYABLE_TERRAINS` in `src/js/sim/world.js` und die auskommentierten Stellen in `src/index.html`.
 
 Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5 km (aus der Saat bestimmt, `coverSeg` in `world.js`). Sie verändert die Stärke der Bärte, die dort auslösen:
 
@@ -81,7 +88,7 @@ Einstellung «Zentrieren» im Training und Wettkampf (gilt auch für die Tagesau
 - **Zentrieren**: Wird das Steigen stärker, Kurve aufmachen (Schieber zur Mitte), so fliegt man Richtung Kern. Wird es schwächer, enger eindrehen.
 - **Ausleiten**: Beim Loslassen fliegt man in die Richtung weiter, in die man gerade schaut, also auf Kurs oder zurück.
 - Die Simulation läuft für alle im gleichen Tempo (keine Zeitlupe), damit später mehrere Piloten gemeinsam fliegen können.
-- **Kreistempo**: Weil die Runde die Zeit rafft, läuft die Bewegung relativ zum Bart mit 40 % der Fluggeschwindigkeit (`CIRCLE_PACE` in `pilot.js`). Ein Kreis dauert so etwa 7 statt 2.5 Sekunden Echtzeit. Das gilt auch für das Herausdriften im Wind; Steigen, Bart und Uhr bleiben unverändert. Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo der Fluggeschwindigkeit.
+- **Kreistempo**: Weil die Runde die Zeit rafft, läuft die Bewegung relativ zum Bart mit 50 % der Fluggeschwindigkeit (`CIRCLE_PACE` in `pilot.js`). Ein Kreis dauert so etwa 5.5 statt 2.5 Sekunden Echtzeit. Das gilt auch für das Herausdriften im Wind; Steigen, Bart und Uhr bleiben unverändert. Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo der Fluggeschwindigkeit.
 - Im Test steigt ein Pilot mit dieser Technik ohne Wind etwa 1.6 statt 1.25 m/s (Automatik). Im Wind muss man gegen den Wind nachsetzen: Wer den Kern ansteuert, steigt bei 15 km/h 0.86 statt 0.57 m/s.
 - Computerpiloten nutzen die Automatik, je nach Können unterschiedlich nah am Kern.
 
