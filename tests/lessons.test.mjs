@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LESSONS } from '../src/js/lessons.js';
+import { ALL_LESSONS as LESSONS } from '../src/js/lessons.js';
 import { Session } from '../src/js/sim/session.js';
 import { Pilot } from '../src/js/sim/pilot.js';
 

@@ -1,7 +1,7 @@
 import { Session } from './sim/session.js';
 import { Pilot, LANE_NAMES } from './sim/pilot.js';
 import { GLIDERS, circleSink, bestBar } from './sim/gliders.js';
-import { DAY_START } from './sim/world.js';
+import { DAY_START, PLAYABLE_TERRAINS } from './sim/world.js';
 import { hash, mulberry32 } from './sim/rng.js';
 import { Renderer, drawBarogram, drawAssist } from './render.js';
 import { VarioSound } from './audio.js';
@@ -36,6 +36,7 @@ delete prefs.len;
 if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 12;
 // Gegenwind höchstens 20 km/h; ältere Einstellungen mit 25 km/h werden begrenzt
 prefs.wind = Math.max(-20, Math.min(25, prefs.wind));
+if (!PLAYABLE_TERRAINS.includes(prefs.terrain)) prefs.terrain = 'flat';
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
@@ -115,7 +116,7 @@ function dailyCfg() {
     key,
     world: {
       seed: hash('dseed', key),
-      terrain: ((v) => (v < 0.3 ? 'mountain' : v < 0.55 ? 'hills' : 'flat'))(r()),
+      terrain: r() < 0.4 ? 'hills' : 'flat',
       wind: winds[Math.floor(r() * winds.length)],
       clouds: clouds[Math.floor(r() * clouds.length)],
       quality: 0.9 + 0.3 * r(),
@@ -136,7 +137,7 @@ const DAYTIMES = {
   afternoon: {
     t: 5400,
     name: 'Nachmittag',
-    desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis, im Gebirge schiebt Talwind. Gegen Ende lässt sie nach.',
+    desc: 'Start 13:00 Uhr. Kräftige Thermik und hohe Basis. Gegen Ende lässt sie nach.',
   },
 };
 const CENTERING_NAMES = { auto: 'Automatisch', assist: 'Assistiert', pro: 'Profi' };
@@ -870,7 +871,12 @@ function tickDemo(dt) {
 
 function makeDemo() {
   const s = new Session({
-    world: { seed: (Math.random() * 1e9) | 0, terrain: Math.random() < 0.5 ? 'flat' : 'mountain', wind: 5, clouds: 'cumulus' },
+    world: {
+      seed: (Math.random() * 1e9) | 0,
+      terrain: PLAYABLE_TERRAINS[Math.floor(Math.random() * PLAYABLE_TERRAINS.length)],
+      wind: 5,
+      clouds: 'cumulus',
+    },
     duration: 5400,
     tStart: 1500,
     rate: 14,

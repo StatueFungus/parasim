@@ -4,10 +4,10 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 ## Modi
 
-- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
+- **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland oder Hügelland (das Gebirge ist vorerst ausgeblendet, siehe unten), Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
 - **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
-- **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
+- **Lernpfad**: 8 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Bärte im Wind, Prüfungsflug). Die Lektion «Linienwahl im Gebirge» ist mit dem Gebirge ausgeblendet.
 
 ## Runde, Zeitraffer und Basis
 
@@ -35,7 +35,7 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 - **Flachland**: flach um 420 m, Start mit der Winde (600 m).
 - **Hügelland**: sanfte Hügel bis etwa 800 m, Start mit der Winde (750 m) aus einer Mulde. Über Kuppen löst es etwas besser aus, die Basis liegt höher als im Flachland.
-- **Gebirge**: Hangkante und Talmitte, Start am Hang (siehe oben).
+- **Gebirge** (vorerst ausgeblendet): Hangkante und Talmitte, Start am Hang (siehe oben). Die Simulation ist vollständig erhalten; freigeschaltet wird es über `PLAYABLE_TERRAINS` in `src/js/sim/world.js` und die auskommentierten Stellen in `src/index.html`.
 
 Entlang der Strecke wechselt die Bodenbedeckung in Abschnitten von 300 m bis 2.5 km (aus der Saat bestimmt, `coverSeg` in `world.js`). Sie verändert die Stärke der Bärte, die dort auslösen:
 

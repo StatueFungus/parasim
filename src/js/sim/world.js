@@ -4,6 +4,8 @@ import { sunAt, slopeLight } from './sun.js';
 // Simulationszeit in Sekunden ab Rundenbeginn; Rundenbeginn ist 11:30 Uhr.
 export const DAY_START = 11.5 * 3600;
 export const DAY_LEN = 7200;
+// Spielbares Gelände; das Gebirge ist vorerst ausgeblendet, bleibt aber in der Simulation erhalten
+export const PLAYABLE_TERRAINS = ['flat', 'hills'];
 const GROW = 2; // Wachstum der Thermiksäule nach oben, als Vielfaches der Steiggeschwindigkeit
 const LEAN = 0.35; // Schräglage im Wind: Kerne steigen in sich geschlossener als einzelne Luftpakete
 const FLANK_X = 1500; // Hangthermik: so weit reicht die Flanke vom Gipfelbart hinunter (waagrecht, m)

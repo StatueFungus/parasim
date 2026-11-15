@@ -1,9 +1,11 @@
 // Lernpfad: kurze Aufgaben mit festem Szenario und klarem Ziel.
 // check() liefert { text, done } bzw. { fail } – wird jede Sekunde ausgewertet.
 
+import { PLAYABLE_TERRAINS } from './sim/world.js';
+
 const agl = (s, p) => p.z - s.world.ground(p.x);
 
-export const LESSONS = [
+export const ALL_LESSONS = [
   {
     id: 'zentrieren',
     title: 'Thermik zentrieren',
@@ -240,3 +242,6 @@ export const LESSONS = [
     },
   },
 ];
+
+// Lektionen in ausgeblendetem Gelände (derzeit das Gebirge) fallen aus dem Lernpfad
+export const LESSONS = ALL_LESSONS.filter((L) => PLAYABLE_TERRAINS.includes(L.setup.world.terrain));
