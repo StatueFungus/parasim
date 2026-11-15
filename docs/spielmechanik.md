@@ -6,15 +6,15 @@ Wie ParaSim Thermik, Wind, Gelände und Flugverhalten simuliert und wie man es s
 
 - **Freies Training**: Schirmklasse (EN-A bis CCC), Flachland, Hügelland oder Gebirge, Cumulus, Wolkenstrassen oder Blauthermik, Wind, Thermikqualität, Tageszeit (Vormittag 11:30 mit Thermikaufbau, Mittag 12:00 oder Nachmittag 13:00 mit voll entwickelter Thermik), 0–7 Gegner, Rundendauer. Thermik kann eingeblendet werden, Neustart ist sofort möglich.
 - **Tagesaufgabe**: jeden Tag ein festes Wetter aus dem Datum. Dein bester Flug wird als «Rekordflug»-Geist gespeichert und fliegt beim nächsten Versuch mit.
-- **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 30 Flugminuten.
+- **Wettkampf**: gegen bis zu 7 Computerpiloten mit unterschiedlichen MacCready-Werten und Können. Hochlaufen kostet 20 Flugminuten.
 - **Lernpfad**: 9 Lektionen mit Ziel und Erfolgskontrolle (Zentrieren, Zentrieren mit dem Schieber, Wolken lesen, Sollfahrt im Gegenwind, tiefe Situationen retten, Zurück zum Bart, Linienwahl im Gebirge, Bärte im Wind, Prüfungsflug).
 
 ## Runde, Zeitraffer und Basis
 
-- **Rundendauer**: 4 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 10, 12 oder 15 Minuten Echtzeit (Standard 15, also 16-facher Zeitraffer). Die Thermik baut sich in der ersten halben Stunde auf und lässt in der letzten halben Stunde nach.
-- **Kreisen trotz Zeitraffer**: Je stärker die Runde rafft, desto langsamer dreht man in Flugzeit (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit immer etwa 5.5 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit. Steigen und Uhr laufen unverändert, man steigt also pro Kreis mehr.
-- **Wolkenbasis** (bei voll entwickelter Thermik): Flachland 2400 m, Hügelland 2650 m, Gebirge 3900 m; morgens rund 800 m (Gebirge 850 m) tiefer. Blauthermik 200 m tiefer.
-- **Abgleich** (`npm run balance`): Mit EN-B schafft der beste Bot pro Tag im Mittel 75–90 km, die Bestweiten liegen um 100 km, mit CCC im Gebirge bis über 130 km. Gegenwind, Blauthermik und Schulschirme liegen deutlich darunter.
+- **Rundendauer**: 2 Flugstunden ab 11:30 Uhr (im Training wahlweise ab 12:00 oder 13:00 Uhr), gespielt in 10, 12 oder 15 Minuten Echtzeit (Standard 12, also 10-facher Zeitraffer). Die Thermik baut sich in der ersten halben Stunde auf und lässt gegen Ende nach.
+- **Kreisen trotz Zeitraffer**: Rafft die Runde stärker als 10-fach (10 min), dreht man in Flugzeit langsamer (`paceScale` = 10 / Zeitraffer, gesetzt von der Session). Ein Kreis dauert so in Echtzeit höchstens etwa 5.5 Sekunden, Zentrierhilfe und die Fenster von Assistent und Tipps wachsen mit.
+- **Wolkenbasis** (bei voll entwickelter Thermik): Flachland 2070 m, Hügelland 2350 m, Gebirge 3100 m; morgens deutlich tiefer. Blauthermik 200 m tiefer.
+- **Abgleich** (`npm run balance`): Mit EN-B schafft der beste Bot pro Tag im Mittel 30–35 km, die Bestweiten liegen bei 40–50 km. Gute Piloten kommen an starken Tagen auf rund 60 km.
 
 ## Wenden und Linienwahl
 

@@ -21,7 +21,7 @@ const prefs = Object.assign(
     wind: 0,
     quality: 1,
     bots: 3,
-    minutes: 15,
+    minutes: 12,
     sound: true,
     coach: true,
     thermals: false,
@@ -33,7 +33,7 @@ const prefs = Object.assign(
 );
 // Echtzeit pro Runde; früher unter «len» mit anderen Stufen gespeichert, das wird bewusst nicht übernommen
 delete prefs.len;
-if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 15;
+if (![10, 12, 15].includes(prefs.minutes)) prefs.minutes = 12;
 const savePrefs = () => save('prefs', prefs);
 sound.enabled = prefs.sound;
 
@@ -120,14 +120,14 @@ function dailyCfg() {
     },
     glider: 'EN-B',
     bots: 3,
-    len: 15,
+    len: 12,
     penalty: 600,
   };
 }
 
 const STEER_RATE = 1.2; // Schieberweg pro echter Sekunde bei gehaltener Pfeiltaste
 const STEER_PX = 110; // Daumenweg in Pixeln für eine Schiebereinheit
-// Startzeit im Training: Die Runde dauert immer 4 Flugstunden, der Tag endet entsprechend später.
+// Startzeit im Training: Die Runde dauert immer 2 Flugstunden, der Tag endet entsprechend später.
 const DAYTIMES = {
   morning: { t: 0, name: 'Vormittag', desc: 'Start 11:30 Uhr. Die Thermik baut sich erst auf, etwa 30 Minuten warten lohnt sich.' },
   noon: { t: 1800, name: 'Mittag', desc: 'Start 12:00 Uhr. Die Thermik ist voll entwickelt, du kannst sofort los.' },
@@ -154,8 +154,8 @@ function pbKey(cfg) {
 }
 
 // ---------- Spielstart ----------
-// Eine Runde dauert 4 Flugstunden; in 10 bis 15 Minuten Echtzeit, Standard 15 (Lektionen haben eigene Längen)
-const ROUND = 14400;
+// Eine Runde dauert 2 Flugstunden; in 10 bis 15 Minuten Echtzeit, Standard 12 (Lektionen haben eigene Längen)
+const ROUND = 7200;
 
 function startGame(cfg) {
   const duration = cfg.duration ?? ROUND;
@@ -165,7 +165,7 @@ function startGame(cfg) {
     world: cfg.world,
     duration,
     tStart: cfg.tStart ?? 0,
-    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 15) * 60),
+    rate: cfg.rate ?? duration / (Math.min(15, cfg.len ?? 12) * 60),
     penalty: cfg.penalty ?? 0,
   });
   cfg.centering ??= prefs.centering;
@@ -1109,7 +1109,7 @@ $('setupGo').onclick = () => {
     glider: prefs.glider,
     bots: prefs.bots,
     len: prefs.minutes,
-    penalty: setupMode === 'race' ? 1800 : 0,
+    penalty: setupMode === 'race' ? 1200 : 0,
   });
 };
 

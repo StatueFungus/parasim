@@ -5,7 +5,7 @@ export const TURN_TIME = 7; // Flugsekunden für eine 180°-Wende
 // Radius = R_TIGHT / |steer|; zu Beginn eine moderate Kurve von etwa 40 m.
 export const R_TIGHT = 25;
 export const STEER_START = 0.62;
-// Die Runde rafft die Zeit (Lektionen: 2 Flugstunden in 12 Minuten, Runden: 4 Flugstunden in 10 bis 15 Minuten). Damit man auf die Kreisbewegung reagieren kann,
+// Die Runde rafft die Zeit (Lektionen: 2 Flugstunden in 12 Minuten, Runden: 2 Flugstunden in 10 bis 15 Minuten). Damit man auf die Kreisbewegung reagieren kann,
 // läuft sie im Bart mit 50 % der Fluggeschwindigkeit (ein Kreis ≈ 5.5 s statt 2.5 s Echtzeit).
 // Je weiter die Kurve aufgemacht wird, desto mehr nähert sich das Tempo wieder der Fluggeschwindigkeit.
 export const CIRCLE_PACE = 0.5;

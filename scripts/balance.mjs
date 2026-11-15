@@ -1,10 +1,10 @@
 // Headless-Abgleich: lässt die Bots über mehrere Saaten fliegen und gibt Distanzen aus.
 // Aufruf: node scripts/balance.mjs [terrain] [glider] [wind] [clouds]
-// Umgebung: DURATION (Rundendauer in Flugsekunden, Standard 14400 wie im Spiel), SEEDS (Anzahl Tage, Standard 8)
+// Umgebung: DURATION (Rundendauer in Flugsekunden, Standard 7200 wie im Spiel), SEEDS (Anzahl Tage, Standard 8)
 import { Session } from '../src/js/sim/session.js';
 
 const [terrain = 'flat', glider = 'EN-B', wind = '0', clouds = 'cumulus'] = process.argv.slice(2);
-const DURATION = Number(process.env.DURATION) || 14400;
+const DURATION = Number(process.env.DURATION) || 7200;
 const SEEDS = Number(process.env.SEEDS) || 8;
 const res = {};
 const bestOfDay = [];
@@ -15,7 +15,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   const s = new Session({
     world: { seed, terrain, wind: +wind, clouds, dayLen: DURATION },
     duration: DURATION,
-    rate: DURATION / 900,
+    rate: DURATION / 720,
     penalty: 600,
   });
   s.addBots(7, glider);
